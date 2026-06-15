@@ -215,6 +215,13 @@
             font-weight: 500;
         }
 
+        #resultDisplay sup {
+            font-size: 0.72em;
+            font-weight: 600;
+            vertical-align: super;
+            line-height: 0;
+        }
+
         .status {
             font-size: 0.85rem;
             margin-top: 1rem;
@@ -483,7 +490,7 @@
                     let cnt = 1;
                     while (i + cnt < factors.length && factors[i + cnt] === base) cnt++;
                     if (cnt === 1) groups.push(`${base}`);
-                    else groups.push(`${base}^${cnt}`);
+                    else groups.push(`${base}<sup>${cnt}</sup>`);
                     i += cnt;
                 }
                 return groups.join(' · ');
