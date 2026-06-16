@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>时间戳转换器 | Unix Timestamp & 日期互转</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'SF Pro Text', 'Inter', 'Roboto', monospace;
+        }
+
+        body {
+            background: linear-gradient(145deg, #f5f7fc 0%, #eef2f8 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 1.5rem;
+        }
+
+        .card {
+            max-width: 860px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(2px);
+            border-radius: 2.5rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #10182f 0%, #1a253f 100%);
+            padding: 1.8rem 2rem;
+            color: white;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .back-link {
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            padding: 0.35rem 0.75rem;
+            border-radius: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.9rem;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1:before {
+            content: "🕐";
+            font-size: 1.9rem;
+        }
+
+        .header p {
+            margin: 0.6rem 0 0;
+            opacity: 0.8;
+            font-size: 0.9rem;
+            font-family: monospace;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        .now-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem 1rem;
+            background: #0f2b3d;
+            color: #fff;
+            border-radius: 1.8rem;
+            padding: 0.9rem 1.4rem;
+            margin-bottom: 1.6rem;
+            box-shadow: 0 6px 14px rgba(15, 43, 61, 0.18);
+        }
+
+        .now-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 600;
+        }
+
+        .now-value {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 1.15rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        .now-value:hover {
+            opacity: 0.8;
+        }
+
+        .now-hint {
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.55);
+            font-family: monospace;
+        }
+
+        section.converter {
+            background: #f8fafd;
+            border-radius: 1.8rem;
+            padding: 1.5rem;
+            border: 1px solid #e2edf7;
+            box-shadow: inset 0 1px 2px #00000008, 0 6px 12px -6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        section.converter:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4b6b8f;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #1e2a3e;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .unit-select {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            background: #eef2f8;
+            padding: 4px;
+            border-radius: 2rem;
+            border: 2px solid #dce5f0;
+        }
+
+        .unit-btn {
+            border: none;
+            background: transparent;
+            color: #4b6b8f;
+            padding: 0.45rem 0.95rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .unit-btn:hover {
+            color: #0f2b3d;
+        }
+
+        .unit-btn.active {
+            background: #fff;
+            color: #0f2b3d;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="datetime-local"] {
+            flex: 4;
+            padding: 0.9rem 1.2rem;
+            font-size: 1rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            background: #fefefe;
+            border: 2px solid #dce5f0;
+            border-radius: 2rem;
+            transition: 0.2s;
+            outline: none;
+            font-weight: 500;
+            color: #0a2540;
+            min-width: 200px;
+        }
+
+        input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        button.action {
+            background: #0f2b3d;
+            border: none;
+            padding: 0.9rem 1.6rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-radius: 2.5rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        button.action:hover {
+            background: #1e3a5f;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+        }
+
+        button.action:active {
+            transform: translateY(1px);
+        }
+
+        .example-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .example-btn {
+            background: #e9eef3;
+            color: #1e293b;
+            border: none;
+            padding: 0.4rem 0.95rem;
+            font-size: 0.78rem;
+            font-family: monospace;
+            font-weight: 500;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .example-btn:hover {
+            background: #d4dfec;
+            color: #0f172a;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .result-item {
+            background: #fefefe;
+            border: 2px solid #dce5f0;
+            border-radius: 1.2rem;
+            padding: 0.8rem 1rem;
+            transition: border-color 0.15s;
+        }
+
+        .result-item:hover {
+            border-color: #b9d0f0;
+        }
+
+        .result-item-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4b6b8f;
+            font-weight: 600;
+            margin-bottom: 0.35rem;
+        }
+
+        .result-item-value {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #0c2b3b;
+            word-break: break-word;
+            line-height: 1.4;
+            cursor: pointer;
+        }
+
+        .result-item-value.clickable:hover {
+            color: #1e4a76;
+        }
+
+        .copy-hint {
+            font-size: 0.68rem;
+            color: #8aa0bb;
+            margin-top: 0.2rem;
+            font-family: monospace;
+        }
+
+        .status {
+            font-size: 0.85rem;
+            margin-top: 0.8rem;
+            color: #4b6b8f;
+            min-height: 1.2rem;
+        }
+
+        .error {
+            color: #c2410c;
+            background: #fff1f0;
+            padding: 0.5rem 0.9rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #0f2b3d;
+            color: #fff;
+            padding: 0.65rem 1.4rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s;
+            z-index: 100;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            padding: 1rem 2rem 1.5rem;
+            color: #7e8b9e;
+            border-top: 1px solid #eef2f8;
+            font-family: monospace;
+        }
+
+        @media (max-width: 600px) {
+            .content {
+                padding: 1.5rem;
+            }
+
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .unit-select {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+            }
+
+            .header-top {
+                flex-direction: column-reverse;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="header">
+            <div class="header-top">
+                <div>
+                    <h1>时间戳转换器</h1>
+                    <p>Unix 时间戳 ↔ 日期双向转换 | 支持秒 / 毫秒 / 微秒 / 纳秒</p>
+                </div>
+                <a href="../index.html" class="back-link">← 返回主页</a>
+            </div>
+        </div>
+        <div class="content">
+            <div class="now-bar">
+                <div>
+                    <div class="now-label">当前 Unix 时间戳 (秒)</div>
+                    <div class="now-value" id="nowTs" title="点击复制">—</div>
+                </div>
+                <div class="now-hint">实时更新 · 点击数值即可复制</div>
+            </div>
+
+            <!-- 时间戳 → 日期 -->
+            <section class="converter">
+                <div class="section-title">📲 时间戳 → 日期</div>
+                <label>输入时间戳</label>
+                <div class="input-group">
+                    <input type="text" id="tsInput" placeholder="例如: 1700000000" inputmode="numeric">
+                    <div class="unit-select" id="unitSelect">
+                        <button class="unit-btn active" data-unit="auto">自动</button>
+                        <button class="unit-btn" data-unit="s">秒</button>
+                        <button class="unit-btn" data-unit="ms">毫秒</button>
+                        <button class="unit-btn" data-unit="us">微秒</button>
+                        <button class="unit-btn" data-unit="ns">纳秒</button>
+                    </div>
+                </div>
+                <div class="example-buttons">
+                    <button class="example-btn" data-ts="0">Epoch (0)</button>
+                    <button class="example-btn" data-ts="1700000000">17 亿秒</button>
+                    <button class="example-btn" data-ts="1000000000000">1e12 (毫秒)</button>
+                    <button class="example-btn" data-ts="now">当前时间</button>
+                </div>
+                <div class="result-grid" id="tsResults">
+                    <div class="result-item">
+                        <div class="result-item-label">本地时间</div>
+                        <div class="result-item-value" id="r-local">—</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-item-label">UTC 时间</div>
+                        <div class="result-item-value" id="r-utc">—</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-item-label">ISO 8601</div>
+                        <div class="result-item-value" id="r-iso">—</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-item-label">相对时间</div>
+                        <div class="result-item-value" id="r-rel">—</div>
+                    </div>
+                </div>
+                <div class="status" id="tsStatus"></div>
+            </section>
+
+            <!-- 日期 → 时间戳 -->
+            <section class="converter">
+                <div class="section-title">📅 日期 → 时间戳</div>
+                <label>选择日期与时间 (本地时区)</label>
+                <div class="input-group">
+                    <input type="datetime-local" id="dateInput" step="1">
+                    <button class="action" id="nowBtn">📍 填入当前时间</button>
+                </div>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-item-label">秒 (s)</div>
+                        <div class="result-item-value clickable" id="d-s" title="点击复制">—</div>
+                        <div class="copy-hint">Unix 标准单位</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-item-label">毫秒 (ms)</div>
+                        <div class="result-item-value clickable" id="d-ms" title="点击复制">—</div>
+                        <div class="copy-hint">JavaScript 常用</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-item-label">微秒 (μs)</div>
+                        <div class="result-item-value clickable" id="d-us" title="点击复制">—</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-item-label">纳秒 (ns)</div>
+                        <div class="result-item-value clickable" id="d-ns" title="点击复制">—</div>
+                    </div>
+                </div>
+                <div class="status" id="dateStatus"></div>
+            </section>
+        </div>
+        <footer>
+            ⏱ Unix 时间戳起点: 1970-01-01 00:00:00 UTC | 浏览器本地计算 | 点击任意结果值即可复制
+        </footer>
+    </div>
+
+    <div class="toast" id="toast">已复制到剪贴板</div>
+
+    <script>
+        (function () {
+            const $ = id => document.getElementById(id);
+            const tsInput = $('tsInput');
+            const unitSelect = $('unitSelect');
+            const dateInput = $('dateInput');
+            const nowBtn = $('nowBtn');
+            const nowTs = $('nowTs');
+            const toast = $('toast');
+
+            let currentUnit = 'auto';
+
+            // ===== 工具函数 =====
+            function pad2(n) { return String(n).padStart(2, '0'); }
+
+            function showToast(text) {
+                toast.textContent = text;
+                toast.classList.add('show');
+                clearTimeout(showToast._t);
+                showToast._t = setTimeout(() => toast.classList.remove('show'), 1400);
+            }
+
+            function copyText(text) {
+                if (!text || text === '—') return;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(
+                        () => showToast('已复制: ' + (text.length > 28 ? text.slice(0, 28) + '…' : text)),
+                        () => fallbackCopy(text)
+                    );
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('已复制');
+                } catch (e) {
+                    showToast('复制失败');
+                }
+                document.body.removeChild(ta);
+            }
+
+            // 自动检测单位：根据位数推断
+            function detectUnit(numStr) {
+                const len = numStr.replace(/[^0-9]/g, '').length;
+                // 10 位 → 秒 (≈ 2001-09-09 ~ 2286-11-20)
+                // 13 位 → 毫秒 (≈ 2001-09-09 ~ 2286-11-20)
+                // 16 位 → 微秒
+                // 19 位 → 纳秒
+                if (len >= 19) return 'ns';
+                if (len >= 16) return 'us';
+                if (len >= 13) return 'ms';
+                return 's';
+            }
+
+            function unitToMsFactor(unit) {
+                switch (unit) {
+                    case 's': return 1000;
+                    case 'ms': return 1;
+                    case 'us': return 0.001;
+                    case 'ns': return 0.000001;
+                    default: return 1;
+                }
+            }
+
+            function tsToMs(value, unit) {
+                // 使用 BigInt 处理大数避免精度丢失，最后转 Number（毫秒）
+                if (!/^-?\d+$/.test(value)) return null;
+                const actualUnit = unit === 'auto' ? detectUnit(value) : unit;
+                const factor = unitToMsFactor(actualUnit);
+                // 对于 ns/us，可能超出 Number.MAX_SAFE_INTEGER，使用 BigInt 除法
+                if (actualUnit === 'ns') {
+                    const big = BigInt(value);
+                    const msBig = big / 1000000n;
+                    return Number(msBig);
+                }
+                if (actualUnit === 'us') {
+                    const big = BigInt(value);
+                    const msBig = big / 1000n;
+                    return Number(msBig);
+                }
+                return Number(value) * factor;
+            }
+
+            function formatLocal(d) {
+                return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ` +
+                    `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+            }
+
+            function formatUTC(d) {
+                return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())} ` +
+                    `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}`;
+            }
+
+            function formatRelative(ms) {
+                const now = Date.now();
+                const diff = ms - now;
+                const abs = Math.abs(diff);
+                const minute = 60 * 1000;
+                const hour = 60 * minute;
+                const day = 24 * hour;
+                const month = 30 * day;
+                const year = 365 * day;
+
+                let human;
+                if (abs < minute) human = `${Math.round(abs / 1000)} 秒`;
+                else if (abs < hour) human = `${Math.round(abs / minute)} 分钟`;
+                else if (abs < day) human = `${Math.round(abs / hour)} 小时`;
+                else if (abs < month) human = `${Math.round(abs / day)} 天`;
+                else if (abs < year) human = `${Math.round(abs / month)} 个月`;
+                else human = `${(abs / year).toFixed(1)} 年`;
+
+                return diff >= 0 ? `${human}后` : `${human}前`;
+            }
+
+            function setStatus(el, text, isError) {
+                if (isError) {
+                    el.innerHTML = `<span class="error">⚠️ ${text}</span>`;
+                } else {
+                    el.textContent = text;
+                }
+            }
+
+            // ===== 时间戳 → 日期 =====
+            function convertTs() {
+                const raw = tsInput.value.trim();
+                if (!raw) {
+                    ['r-local', 'r-utc', 'r-iso', 'r-rel'].forEach(id => $(id).textContent = '—');
+                    setStatus($('tsStatus'), '');
+                    return;
+                }
+                if (!/^-?\d+$/.test(raw)) {
+                    setStatus($('tsStatus'), '请输入纯数字时间戳', true);
+                    return;
+                }
+
+                const ms = tsToMs(raw, currentUnit);
+                if (ms === null || !isFinite(ms)) {
+                    setStatus($('tsStatus'), '无效的时间戳', true);
+                    return;
+                }
+
+                // 合理性范围校验 (±10000 年)
+                if (Math.abs(ms) > 8.64e15) {
+                    setStatus($('tsStatus'), '时间戳超出可表示范围', true);
+                    return;
+                }
+
+                const d = new Date(ms);
+                if (isNaN(d.getTime())) {
+                    setStatus($('tsStatus'), '无效日期', true);
+                    return;
+                }
+
+                $('r-local').textContent = formatLocal(d);
+                $('r-utc').textContent = formatUTC(d) + ' UTC';
+                $('r-iso').textContent = d.toISOString();
+                $('r-rel').textContent = formatRelative(ms);
+
+                const usedUnit = currentUnit === 'auto' ? detectUnit(raw) : currentUnit;
+                setStatus($('tsStatus'), `✔ 解析成功 · 单位: ${usedUnit} (${raw})`);
+            }
+
+            // ===== 日期 → 时间戳 =====
+            function convertDate() {
+                const v = dateInput.value;
+                if (!v) {
+                    ['d-s', 'd-ms', 'd-us', 'd-ns'].forEach(id => $(id).textContent = '—');
+                    setStatus($('dateStatus'), '');
+                    return;
+                }
+                const d = new Date(v);
+                if (isNaN(d.getTime())) {
+                    setStatus($('dateStatus'), '无效的日期', true);
+                    return;
+                }
+                const ms = d.getTime();
+                const s = Math.floor(ms / 1000);
+                $('d-s').textContent = String(s);
+                $('d-ms').textContent = String(ms);
+                $('d-us').textContent = String(ms * 1000);
+                $('d-ns').textContent = String(ms * 1000000);
+                setStatus($('dateStatus'), `✔ 转换完成 · ${formatLocal(d)}`);
+            }
+
+            // ===== 当前时间戳 =====
+            function updateNow() {
+                const s = Math.floor(Date.now() / 1000);
+                nowTs.textContent = String(s);
+                nowTs.dataset.value = String(s);
+            }
+
+            // ===== datetime-local 默认值 =====
+            function fillNowDate() {
+                const d = new Date();
+                const v = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ` +
+                    `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+                // datetime-local 接受 'YYYY-MM-DDTHH:MM:SS'
+                dateInput.value = v.replace(' ', 'T');
+            }
+
+            // ===== 事件绑定 =====
+            tsInput.addEventListener('input', convertTs);
+
+            unitSelect.addEventListener('click', e => {
+                const btn = e.target.closest('.unit-btn');
+                if (!btn) return;
+                unitSelect.querySelectorAll('.unit-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentUnit = btn.dataset.unit;
+                convertTs();
+            });
+
+            document.querySelectorAll('.example-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const v = btn.dataset.ts;
+                    if (v === 'now') {
+                        tsInput.value = String(Math.floor(Date.now() / 1000));
+                    } else {
+                        tsInput.value = v;
+                    }
+                    convertTs();
+                });
+            });
+
+            dateInput.addEventListener('input', convertDate);
+            nowBtn.addEventListener('click', () => {
+                fillNowDate();
+                convertDate();
+            });
+
+            // 点击复制
+            document.addEventListener('click', e => {
+                const el = e.target.closest('.result-item-value, .now-value');
+                if (!el) return;
+                const text = el.dataset.value || el.textContent;
+                if (text && text !== '—') copyText(text);
+            });
+
+            // 实时更新
+            updateNow();
+            setInterval(updateNow, 1000);
+
+            // 初始化默认值
+            tsInput.value = String(Math.floor(Date.now() / 1000));
+            fillNowDate();
+            convertTs();
+            convertDate();
+        })();
+    </script>
+</body>
+
+</html>
