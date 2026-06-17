@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>通用图绘制 | 图论画图工具</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'SF Pro Text', 'Inter', 'Roboto', monospace;
+        }
+
+        body {
+            background: linear-gradient(145deg, #f5f7fc 0%, #eef2f8 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 1.5rem;
+        }
+
+        .card {
+            max-width: 980px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(2px);
+            border-radius: 2.5rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #10182f 0%, #1a253f 100%);
+            padding: 1.8rem 2rem;
+            color: white;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .back-link {
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            padding: 0.35rem 0.75rem;
+            border-radius: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.9rem;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1:before {
+            content: "🕸";
+            font-size: 1.9rem;
+        }
+
+        .header p {
+            margin: 0.6rem 0 0;
+            opacity: 0.8;
+            font-size: 0.9rem;
+            font-family: monospace;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        section.converter {
+            background: #f8fafd;
+            border-radius: 1.8rem;
+            padding: 1.5rem;
+            border: 1px solid #e2edf7;
+            box-shadow: inset 0 1px 2px #00000008, 0 6px 12px -6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        section.converter:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4b6b8f;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #1e2a3e;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        label code,
+        .hint code,
+        .node-info code {
+            font-family: 'SF Mono', monospace;
+            background: #e9eef3;
+            padding: 0.05rem 0.4rem;
+            border-radius: 0.35rem;
+            font-size: 0.85em;
+            color: #0f2b3d;
+        }
+
+        .field-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem 1.6rem;
+            align-items: flex-end;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .field label {
+            margin: 0;
+            font-size: 0.78rem;
+        }
+
+        .seg {
+            display: inline-flex;
+            background: #eef2f8;
+            padding: 4px;
+            border-radius: 2rem;
+            border: 2px solid #dce5f0;
+            gap: 4px;
+        }
+
+        .seg button {
+            border: none;
+            background: transparent;
+            color: #4b6b8f;
+            padding: 0.5rem 1.1rem;
+            font-size: 0.84rem;
+            font-weight: 600;
+            border-radius: 2rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+
+        .seg button.active {
+            background: #fff;
+            color: #0f2b3d;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 130px;
+            padding: 0.8rem 1rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            background: #fefefe;
+            border: 2px solid #dce5f0;
+            border-radius: 1.2rem;
+            resize: vertical;
+            outline: none;
+            color: #0a2540;
+            line-height: 1.65;
+            transition: 0.2s;
+        }
+
+        textarea:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .hint {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 0.45rem;
+            font-family: monospace;
+            line-height: 1.5;
+        }
+
+        .swatch {
+            display: inline-block;
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin: 0 0.1rem;
+        }
+
+        .example-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .example-btn {
+            background: #e9eef3;
+            color: #1e293b;
+            border: none;
+            padding: 0.4rem 0.95rem;
+            font-size: 0.78rem;
+            font-family: monospace;
+            font-weight: 500;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .example-btn:hover {
+            background: #d4dfec;
+            color: #0f172a;
+        }
+
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem 1.2rem;
+        }
+
+        .options .check {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: #1e2a3e;
+        }
+
+        .options input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #0f2b3d;
+            cursor: pointer;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.7rem;
+            font-size: 0.78rem;
+            color: #4b6b8f;
+        }
+
+        .toolbar .spacer {
+            flex: 1;
+        }
+
+        .zoom-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid #dce5f0;
+            background: #fff;
+            color: #0f2b3d;
+            cursor: pointer;
+            font-size: 1.05rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .zoom-btn:hover {
+            background: #eef2f8;
+        }
+
+        .text-btn {
+            border: 1px solid #dce5f0;
+            background: #fff;
+            color: #0f2b3d;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 0.4rem 0.85rem;
+            border-radius: 2rem;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+
+        .text-btn:hover {
+            background: #eef2f8;
+        }
+
+        .viz-wrap {
+            background-color: #fafcff;
+            background-image: radial-gradient(#dbe7f3 1px, transparent 1px);
+            background-size: 18px 18px;
+            border: 1px solid #e2edf7;
+            border-radius: 1.2rem;
+            padding: 0.5rem;
+            overflow: auto;
+            max-height: 64vh;
+            min-height: 260px;
+        }
+
+        #graphSvg {
+            display: block;
+            margin: 0 auto;
+        }
+
+        #graphSvg .graph-edge {
+            stroke: #475569;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        #graphSvg .edge-hit {
+            stroke: transparent;
+            stroke-width: 14;
+            fill: none;
+            cursor: pointer;
+        }
+
+        #graphSvg .loop {
+            stroke: #475569;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        #graphSvg .edge-g {
+            pointer-events: none;
+        }
+
+        #graphSvg .edge-g .edge-hit,
+        #graphSvg .edge-g .graph-edge,
+        #graphSvg .edge-g .echip {
+            pointer-events: stroke;
+        }
+
+        #graphSvg .edge-g:hover .graph-edge,
+        #graphSvg .edge-g:hover .loop {
+            stroke: #2563eb;
+        }
+
+        #graphSvg .edge-g.selected .graph-edge,
+        #graphSvg .edge-g.selected .loop {
+            stroke: #2563eb;
+            stroke-width: 3.5;
+        }
+
+        #graphSvg .node {
+            fill: #ffffff;
+            stroke: #64748b;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: stroke 0.15s, stroke-width 0.15s;
+        }
+
+        #graphSvg .node-text {
+            font: 700 13px system-ui, sans-serif;
+            fill: #0f172a;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        #graphSvg .chip {
+            stroke: #ffffff;
+            stroke-width: 1.5;
+            pointer-events: none;
+        }
+
+        #graphSvg .chip-text {
+            font: 700 10px system-ui, sans-serif;
+            fill: #ffffff;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        #graphSvg .echip {
+            stroke: #ffffff;
+            stroke-width: 1.5;
+        }
+
+        #graphSvg .echip-text {
+            font: 700 9px system-ui, sans-serif;
+            fill: #ffffff;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        #graphSvg .node-g:hover .node {
+            stroke: #2563eb;
+            stroke-width: 3.5;
+        }
+
+        #graphSvg .node-g.selected .node {
+            stroke: #2563eb;
+            stroke-width: 4;
+        }
+
+        .node-info {
+            margin-top: 0.9rem;
+            font-size: 0.82rem;
+            color: #334155;
+            line-height: 1.85;
+            background: #fff;
+            border: 1px solid #e2edf7;
+            border-radius: 1rem;
+            padding: 0.75rem 1rem;
+        }
+
+        .ni-k {
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .ni-w {
+            display: inline-block;
+            color: #fff;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.76rem;
+            font-weight: 600;
+            padding: 0.05rem 0.45rem;
+            border-radius: 0.8rem;
+            margin: 0 0.1rem;
+        }
+
+        .status {
+            font-size: 0.85rem;
+            margin-top: 0.8rem;
+            color: #4b6b8f;
+            min-height: 1.2rem;
+        }
+
+        .error {
+            color: #c2410c;
+            background: #fff1f0;
+            padding: 0.5rem 0.9rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            padding: 1rem 2rem 1.5rem;
+            color: #7e8b9e;
+            border-top: 1px solid #eef2f8;
+            font-family: monospace;
+        }
+
+        @media (max-width: 600px) {
+            .content {
+                padding: 1.5rem;
+            }
+
+            .header-top {
+                flex-direction: column-reverse;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="header">
+            <div class="header-top">
+                <div>
+                    <h1>通用图绘制</h1>
+                    <p>图论画图工具 · 力导向布局 · 点权 / 边权 各最多 3 个（颜色区分）</p>
+                </div>
+                <a href="../index.html" class="back-link">← 返回主页</a>
+            </div>
+        </div>
+        <div class="content">
+            <!-- 输入设置 -->
+            <section class="converter">
+                <div class="section-title">⚙ 输入设置</div>
+                <div class="field-row">
+                    <div class="field">
+                        <label>图类型</label>
+                        <div class="seg" id="dirSeg">
+                            <button class="active" data-dir="0">无向图</button>
+                            <button data-dir="1">有向图</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 边 -->
+            <section class="converter">
+                <div class="section-title">🔗 边（含边权）</div>
+                <textarea id="edgeInput" spellcheck="false" placeholder="u v [w1 w2 w3]&#10;1 2 3 1&#10;2 3"></textarea>
+                <div class="hint">每行格式：<code>u v [w1 w2 w3]</code>，最多 3 个边权；颜色与点权一致
+                    <span class="swatch" style="background:#ef4444"></span>权1
+                    <span class="swatch" style="background:#2563eb"></span>权2
+                    <span class="swatch" style="background:#16a34a"></span>权3
+                </div>
+                <div class="example-buttons" id="exampleButtons"></div>
+            </section>
+
+            <!-- 点权 -->
+            <section class="converter">
+                <div class="section-title">🎯 点权（可选）</div>
+                <textarea id="weightInput" spellcheck="false" placeholder="i [w1 w2 w3]&#10;1 10 20&#10;3 1 2 3"></textarea>
+                <div class="hint">每行格式：<code>i [w1 w2 w3]</code>，最多 3 个点权；位置即颜色
+                    <span class="swatch" style="background:#ef4444"></span>权1
+                    <span class="swatch" style="background:#2563eb"></span>权2
+                    <span class="swatch" style="background:#16a34a"></span>权3
+                </div>
+            </section>
+
+            <!-- 显示选项 -->
+            <section class="converter">
+                <div class="section-title">🎛 显示选项</div>
+                <div class="options">
+                    <label class="check"><input type="checkbox" id="optNodeW" checked> 显示点权</label>
+                    <label class="check"><input type="checkbox" id="optEdgeW" checked> 显示边权</label>
+                    <label class="check"><input type="checkbox" id="optLabel" checked> 显示节点编号</label>
+                </div>
+            </section>
+
+            <!-- 可视化 -->
+            <section class="converter">
+                <div class="section-title">🧭 图结构</div>
+                <div class="toolbar">
+                    <span id="statsLine"></span>
+                    <span class="spacer"></span>
+                    <button class="text-btn" id="relayoutBtn">🔄 重新布局</button>
+                    <button class="zoom-btn" id="zoomOut" title="缩小">−</button>
+                    <span id="zoomLabel" style="min-width:42px;text-align:center;font-family:monospace">100%</span>
+                    <button class="zoom-btn" id="zoomIn" title="放大">+</button>
+                    <button class="text-btn" id="zoomReset">复位</button>
+                    <button class="text-btn" id="exportBtn">⬇ 导出 SVG</button>
+                </div>
+                <div class="viz-wrap" id="vizWrap">
+                    <svg id="graphSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+                </div>
+                <div class="node-info" id="nodeInfo">💡 点击节点或边查看详情（邻接关系、点权、边权）</div>
+                <div class="status" id="buildStatus"></div>
+            </section>
+        </div>
+        <footer>
+            🕸 Fruchterman-Reingold 力导向布局 | 浏览器内计算 | 点权/边权各最多 3 色 · 支持有向 / 自环 / 重边 · 可导出 SVG
+        </footer>
+    </div>
+
+    <script>
+        (function () {
+            const $ = id => document.getElementById(id);
+            const edgeInput = $('edgeInput');
+            const weightInput = $('weightInput');
+            const dirSeg = $('dirSeg');
+            const buildStatus = $('buildStatus');
+            const statsLine = $('statsLine');
+            const svg = $('graphSvg');
+            const nodeInfo = $('nodeInfo');
+            const optNodeW = $('optNodeW');
+            const optEdgeW = $('optEdgeW');
+            const optLabel = $('optLabel');
+            const zoomLabel = $('zoomLabel');
+
+            // ===== 常量 =====
+            const R = 17;
+            const MARGIN = 40;
+            const NODE_CHIP_H = 16, NODE_CHIP_GAP = 5, NODE_CHIP_MINW = 22, NODE_CHARW = 7.9;
+            const EDGE_CHIP_H = 14, EDGE_CHIP_GAP = 4, EDGE_CHIP_MINW = 18, EDGE_CHARW = 7.2;
+            const SLOT_COLORS = ['#ef4444', '#2563eb', '#16a34a'];
+
+            // ===== 示例 =====
+            const EXAMPLES = [
+                {
+                    name: '带权无向图', dir: 0,
+                    edges: '1 2 3 1\n2 3 2\n3 4 1 4 2\n4 1\n1 3 5',
+                    weights: '1 10 20\n2 5\n3 1 2 3\n4 7'
+                },
+                {
+                    name: '有向图', dir: 1,
+                    edges: '1 2\n2 3\n3 1\n1 4 2\n4 2 1',
+                    weights: '1 9\n3 4 5'
+                },
+                {
+                    name: '完全图 K5', dir: 0,
+                    edges: '1 2\n1 3\n1 4\n1 5\n2 3\n2 4\n2 5\n3 4\n3 5\n4 5',
+                    weights: ''
+                },
+                {
+                    name: '环 C6', dir: 0,
+                    edges: '1 2\n2 3\n3 4\n4 5\n5 6\n6 1',
+                    weights: '1 1\n3 2\n5 3'
+                },
+                {
+                    name: '自环 / 重边', dir: 0,
+                    edges: '1 1 5\n1 2\n1 2 3\n2 3',
+                    weights: '1 7\n2 8'
+                }
+            ];
+
+            // ===== 状态 =====
+            let directed = false;
+            let zoom = 1;
+            let selectedNode = null;
+            let selectedEdge = -1;
+
+            let idList = [];
+            let edges = [];          // {u,v,weights:[]}
+            let nodeWeights = new Map();
+            let adj = new Map();     // id -> Set(nbr) （用于度/邻接展示，无向语义）
+            let positions = new Map();
+            let lastSig = '';
+            let S = 800;             // 力导向虚拟画布边长
+
+            function esc(s) {
+                return String(s).replace(/[&<>"]/g, c => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
+                }[c]));
+            }
+
+            function setStatus(el, text, isError) {
+                if (isError) el.innerHTML = `<span class="error">⚠️ ${text}</span>`;
+                else el.innerHTML = text;
+            }
+
+            function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+            function displayVal(v) {
+                v = String(v);
+                return v.length > 8 ? v.slice(0, 7) + '…' : v;
+            }
+
+            function chipWidth(v, minW, charW) {
+                const len = Math.min(String(v).length, 8);
+                return Math.max(minW, len * charW + 10);
+            }
+
+            // ===== 解析 =====
+            function parseEdges(text) {
+                const out = [];
+                let bad = 0, extra = 0;
+                for (const raw of text.split('\n')) {
+                    const line = raw.trim();
+                    if (!line || line.startsWith('#')) continue;
+                    const t = line.split(/\s+/);
+                    if (t.length < 2) { bad++; continue; }
+                    const u = parseInt(t[0], 10), v = parseInt(t[1], 10);
+                    if (!Number.isFinite(u) || !Number.isFinite(v)) { bad++; continue; }
+                    const w = t.slice(2);
+                    if (w.length > 3) extra += w.length - 3;
+                    out.push({ u, v, weights: w.slice(0, 3) });
+                }
+                return { edges: out, bad, extra };
+            }
+
+            function parseWeights(text) {
+                const wm = new Map();
+                let bad = 0, extra = 0;
+                for (const raw of text.split('\n')) {
+                    const line = raw.trim();
+                    if (!line || line.startsWith('#')) continue;
+                    const t = line.split(/\s+/);
+                    const node = parseInt(t[0], 10);
+                    if (!Number.isFinite(node)) { bad++; continue; }
+                    const vals = t.slice(1);
+                    if (vals.length > 3) extra += vals.length - 3;
+                    wm.set(node, vals.slice(0, 3));
+                }
+                return { wm, bad, extra };
+            }
+
+            // ===== 力导向布局（Fruchterman-Reingold） =====
+            function ensurePositions(list) {
+                const have = new Set(list);
+                [...positions.keys()].forEach(id => { if (!have.has(id)) positions.delete(id); });
+                let cx = 0, cy = 0, cnt = 0;
+                positions.forEach(p => { cx += p.x; cy += p.y; cnt++; });
+                if (cnt === 0) { cx = S / 2; cy = S / 2; } else { cx /= cnt; cy /= cnt; }
+                let i = 0;
+                list.forEach(id => {
+                    if (!positions.has(id)) {
+                        const ang = (i / Math.max(1, list.length)) * Math.PI * 2;
+                        const r = S * 0.12;
+                        positions.set(id, {
+                            x: cx + Math.cos(ang) * r + (Math.random() - 0.5) * 12,
+                            y: cy + Math.sin(ang) * r + (Math.random() - 0.5) * 12
+                        });
+                        i++;
+                    }
+                });
+            }
+
+            function relayout(list, edgeList, iters, reinit) {
+                const n = list.length;
+                if (n === 0) return;
+                if (n === 1) { positions.set(list[0], { x: S / 2, y: S / 2 }); return; }
+
+                if (reinit || positions.size === 0) {
+                    positions.clear();
+                    list.forEach((id, i) => {
+                        const ang = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+                        const r = S * 0.34 * (0.7 + 0.3 * ((i % 5) / 5));
+                        positions.set(id, { x: S / 2 + Math.cos(ang) * r, y: S / 2 + Math.sin(ang) * r });
+                    });
+                }
+
+                const k = Math.sqrt(S * S / n) * 0.8;
+                let temp = S / 6;
+                const pad = 12;
+
+                for (let it = 0; it < iters; it++) {
+                    const disp = new Map();
+                    list.forEach(id => disp.set(id, { x: 0, y: 0 }));
+
+                    // 斥力（所有节点对）
+                    for (let i = 0; i < n; i++) {
+                        const u = list[i], pu = positions.get(u);
+                        for (let j = i + 1; j < n; j++) {
+                            const v = list[j], pv = positions.get(v);
+                            let dx = pu.x - pv.x, dy = pu.y - pv.y;
+                            let d = Math.hypot(dx, dy);
+                            if (d < 0.01) { dx = (Math.random() - 0.5); dy = (Math.random() - 0.5); d = Math.hypot(dx, dy) || 0.01; }
+                            const f = k * k / d, ux = dx / d, uy = dy / d;
+                            disp.get(u).x += ux * f; disp.get(u).y += uy * f;
+                            disp.get(v).x -= ux * f; disp.get(v).y -= uy * f;
+                        }
+                    }
+                    // 引力（边）
+                    for (const e of edgeList) {
+                        if (e.u === e.v) continue;
+                        const pu = positions.get(e.u), pv = positions.get(e.v);
+                        if (!pu || !pv) continue;
+                        let dx = pu.x - pv.x, dy = pu.y - pv.y;
+                        let d = Math.hypot(dx, dy) || 0.01;
+                        const f = d * d / k, ux = dx / d, uy = dy / d;
+                        disp.get(e.u).x -= ux * f; disp.get(e.u).y -= uy * f;
+                        disp.get(e.v).x += ux * f; disp.get(e.v).y += uy * f;
+                    }
+                    // 应用 + 冷却 + 边界
+                    list.forEach(id => {
+                        const dd = disp.get(id), p = positions.get(id);
+                        const m = Math.hypot(dd.x, dd.y);
+                        if (m > 0) {
+                            p.x += (dd.x / m) * Math.min(m, temp);
+                            p.y += (dd.y / m) * Math.min(m, temp);
+                        }
+                        p.x = clamp(p.x, pad, S - pad);
+                        p.y = clamp(p.y, pad, S - pad);
+                    });
+                    temp *= 0.97;
+                    if (temp < 0.4) break;
+                }
+            }
+
+            // 归一化虚拟坐标 -> 像素坐标
+            function computePixels() {
+                let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+                positions.forEach(p => {
+                    minx = Math.min(minx, p.x); maxx = Math.max(maxx, p.x);
+                    miny = Math.min(miny, p.y); maxy = Math.max(maxy, p.y);
+                });
+                if (!Number.isFinite(minx)) { minx = miny = 0; maxx = maxy = 0; }
+                const cw = Math.max(maxx - minx, 1), ch = Math.max(maxy - miny, 1);
+                const baseMax = clamp(560, 160 + idList.length * 40, 1150);
+                let scale = Math.min(baseMax / Math.max(cw, ch), 2.4);
+                const px = new Map(), py = new Map();
+                idList.forEach(id => {
+                    const p = positions.get(id) || { x: S / 2, y: S / 2 };
+                    px.set(id, MARGIN + (p.x - minx) * scale);
+                    py.set(id, MARGIN + (p.y - miny) * scale);
+                });
+                let pmaxX = 0, pmaxY = 0;
+                px.forEach(x => pmaxX = Math.max(pmaxX, x));
+                py.forEach(y => pmaxY = Math.max(pmaxY, y));
+                const W = Math.max(440, Math.ceil(pmaxX) + MARGIN + R + 30);
+                const H = Math.max(380, Math.ceil(pmaxY) + MARGIN + R + 30);
+                return { px, py, W, H };
+            }
+
+            function edgeBendGroupKey(u, v) {
+                return u < v ? u + '_' + v : v + '_' + u;
+            }
+
+            // ===== 构建 =====
+            function build(autoRelayout) {
+                const { edges: pe, bad: badE, extra: extraE } = parseEdges(edgeInput.value);
+                const { wm, bad: badW, extra: extraW } = parseWeights(weightInput.value);
+
+                edges = pe;
+                nodeWeights = wm;
+
+                const ns = new Set();
+                edges.forEach(e => { ns.add(e.u); ns.add(e.v); });
+                wm.forEach((_, k) => ns.add(k));
+                idList = [...ns].sort((a, b) => a - b);
+
+                // 邻接（无向语义，用于展示）
+                adj = new Map();
+                idList.forEach(id => adj.set(id, new Set()));
+                edges.forEach(e => {
+                    if (!adj.has(e.u)) adj.set(e.u, new Set());
+                    if (!adj.has(e.v)) adj.set(e.v, new Set());
+                    if (e.u !== e.v) { adj.get(e.u).add(e.v); adj.get(e.v).add(e.u); }
+                });
+
+                S = clamp(560, 150 + idList.length * 42, 1300);
+
+                if (idList.length === 0) {
+                    positions.clear();
+                    svg.innerHTML = '';
+                    svg.removeAttribute('width'); svg.removeAttribute('height');
+                    setStatus(buildStatus, '请输入边以生成图', true);
+                    statsLine.textContent = '';
+                    nodeInfo.innerHTML = '💡 点击节点或边查看详情';
+                    lastSig = '';
+                    return;
+                }
+
+                // 拓扑签名（与有向无关）
+                const sig = idList.join(',') + '|' + edges.map(e => edgeBendGroupKey(e.u, e.v)).sort().join(',');
+                const topoChanged = sig !== lastSig;
+                lastSig = sig;
+
+                ensurePositions(idList);
+                if (autoRelayout && topoChanged) {
+                    relayout(idList, edges, 160, false);
+                } else if (positions.size === 0) {
+                    relayout(idList, edges, 260, true);
+                }
+
+                selectedNode = null;
+                selectedEdge = -1;
+                render();
+
+                // 状态
+                const stats = [`节点 ${idList.length}`, `边 ${edges.length}`, directed ? '有向' : '无向'];
+                statsLine.textContent = stats.join(' · ');
+                const notes = [];
+                if (badE > 0) notes.push(`忽略 ${badE} 行无效边`);
+                if (badW > 0) notes.push(`忽略 ${badW} 行无效点权`);
+                if (extraE > 0) notes.push(`${extraE} 个边权超过 3 已截断`);
+                if (extraW > 0) notes.push(`${extraW} 个点权超过 3 已截断`);
+                let msg = `✔ 已绘制 · ${idList.length} 节点 · ${edges.length} 边`;
+                if (notes.length) msg += ' · ' + notes.join('；');
+                setStatus(buildStatus, msg);
+                nodeInfo.innerHTML = '💡 点击节点或边查看详情（邻接关系、点权、边权）';
+            }
+
+            // ===== 渲染 =====
+            function render() {
+                if (idList.length === 0) { svg.innerHTML = ''; return; }
+                const showNodeW = optNodeW.checked;
+                const showEdgeW = optEdgeW.checked;
+                const showLabel = optLabel.checked;
+                const z = zoom;
+                const { px, py, W, H } = computePixels();
+
+                // 计算每条边的弯曲偏移（同端点重边分开）
+                const groupCount = new Map();
+                edges.forEach(e => {
+                    const key = e.u === e.v ? 'loop_' + e.u : edgeBendGroupKey(e.u, e.v);
+                    groupCount.set(key, (groupCount.get(key) || 0) + 1);
+                });
+                const groupIdx = new Map();
+
+                let out = `<defs>
+                    <marker id="arrowG" viewBox="0 0 10 10" markerWidth="9" markerHeight="9"
+                        refX="8.5" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#475569"></path>
+                    </marker>
+                </defs>`;
+                out += `<g transform="scale(${z})">`;
+
+                // 边
+                edges.forEach((e, i) => {
+                    const key = e.u === e.v ? 'loop_' + e.u : edgeBendGroupKey(e.u, e.v);
+                    const cnt = groupCount.get(key) || 1;
+                    const idx = (groupIdx.get(key) || 0);
+                    groupIdx.set(key, idx + 1);
+                    const bend = cnt > 1 ? (idx - (cnt - 1) / 2) : 0;
+
+                    const sel = selectedEdge === i ? ' selected' : '';
+                    out += `<g class="edge-g${sel}" data-i="${i}">`;
+
+                    if (e.u === e.v) {
+                        // 自环
+                        const cx = px.get(e.u), cy = py.get(e.u);
+                        const lx = cx, ly = cy - R - 16, lr = 15;
+                        out += `<circle class="edge-hit" cx="${lx}" cy="${ly}" r="${lr + 5}"></circle>`;
+                        out += `<circle class="loop" cx="${lx}" cy="${ly}" r="${lr}" ${directed ? 'marker-end="url(#arrowG)"' : ''}></circle>`;
+                        if (showEdgeW && e.weights.length) {
+                            out += renderChipRow(e.weights, lx, ly - lr - 10, 'echip', EDGE_CHIP_H, EDGE_CHIP_GAP, EDGE_CHIP_MINW, EDGE_CHARW);
+                        }
+                    } else {
+                        const pu = { x: px.get(e.u), y: py.get(e.u) };
+                        const pv = { x: px.get(e.v), y: py.get(e.v) };
+                        const g = edgeGeom(pu, pv, bend);
+                        out += `<path class="edge-hit" d="M ${g.sx} ${g.sy} Q ${g.cx} ${g.cy} ${g.ex} ${g.ey}"></path>`;
+                        out += `<path class="graph-edge" d="M ${g.sx} ${g.sy} Q ${g.cx} ${g.cy} ${g.ex} ${g.ey}" ${directed ? 'marker-end="url(#arrowG)"' : ''}></path>`;
+                        if (showEdgeW && e.weights.length) {
+                            out += renderChipRow(e.weights, g.mx, g.my, 'echip', EDGE_CHIP_H, EDGE_CHIP_GAP, EDGE_CHIP_MINW, EDGE_CHARW);
+                        }
+                    }
+                    out += `</g>`;
+                });
+
+                // 节点
+                idList.forEach(id => {
+                    const cx = px.get(id), cy = py.get(id);
+                    const sel = selectedNode === id ? ' selected' : '';
+                    const weights = nodeWeights.get(id) || [];
+                    out += `<g class="node-g${sel}" data-id="${id}">`;
+                    out += `<title>${esc(nodeTitle(id))}</title>`;
+                    if (showNodeW && weights.length) {
+                        out += renderChipRow(weights, cx, cy + R + 11, 'chip', NODE_CHIP_H, NODE_CHIP_GAP, NODE_CHIP_MINW, NODE_CHARW);
+                    }
+                    out += `<circle class="node" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${R}"></circle>`;
+                    if (showLabel) {
+                        out += `<text class="node-text" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle" dominant-baseline="central">${esc(id)}</text>`;
+                    }
+                    out += `</g>`;
+                });
+
+                out += `</g>`;
+                svg.setAttribute('width', (W * z).toFixed(0));
+                svg.setAttribute('height', (H * z).toFixed(0));
+                svg.innerHTML = out;
+            }
+
+            // 计算边的几何（起止裁剪到节点边缘 + 弯曲控制点 + 中点）
+            function edgeGeom(pu, pv, bend) {
+                let dx = pv.x - pu.x, dy = pv.y - pu.y;
+                let len = Math.hypot(dx, dy);
+                if (len < 0.01) { dx = 1; dy = 0; len = 1; }
+                const ux = dx / len, uy = dy / len;
+                const perpx = -uy, perpy = ux;
+                const startR = R + 1;
+                const endR = R + (directed ? 6 : 1);
+                const sx = pu.x + ux * startR, sy = pu.y + uy * startR;
+                const ex = pv.x - ux * endR, ey = pv.y - uy * endR;
+                const off = bend * 28;
+                const cx = (sx + ex) / 2 + perpx * off, cy = (sy + ey) / 2 + perpy * off;
+                const mx = (sx + 2 * cx + ex) / 4, my = (sy + 2 * cy + ey) / 4;
+                return { sx, sy, ex, ey, cx, cy, mx, my };
+            }
+
+            function renderChipRow(weights, cx, cy, cls, h, gap, minW, charW) {
+                const chips = weights.map((v, i) => ({ value: v, color: SLOT_COLORS[i], w: chipWidth(v, minW, charW) }));
+                const total = chips.reduce((s, c) => s + c.w, 0) + (chips.length - 1) * gap;
+                let sx = cx - total / 2;
+                let s = '';
+                chips.forEach(c => {
+                    s += `<rect class="${cls}" x="${sx.toFixed(1)}" y="${(cy - h / 2).toFixed(1)}" width="${c.w.toFixed(1)}" height="${h}" rx="${h / 2}" fill="${c.color}"></rect>`;
+                    s += `<text class="${cls}-text" x="${(sx + c.w / 2).toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle" dominant-baseline="central">${esc(displayVal(c.value))}</text>`;
+                    sx += c.w + gap;
+                });
+                return s;
+            }
+
+            function nodeTitle(id) {
+                const nbrs = [...(adj.get(id) || [])].sort((a, b) => a - b);
+                const ws = nodeWeights.get(id) || [];
+                const lines = [`节点 #${id} · 度 ${nbrs.length}`];
+                lines.push(`邻接: ${nbrs.length ? nbrs.join(', ') : '无'}`);
+                if (ws.length) lines.push(`点权: ${ws.join(', ')}`);
+                return lines.join('\n');
+            }
+
+            function selectNode(id) {
+                selectedNode = id;
+                selectedEdge = -1;
+                svg.querySelectorAll('.node-g.selected, .edge-g.selected').forEach(g => g.classList.remove('selected'));
+                const g = svg.querySelector(`.node-g[data-id="${id}"]`);
+                if (g) g.classList.add('selected');
+                const nbrs = [...(adj.get(id) || [])].sort((a, b) => a - b);
+                const ws = nodeWeights.get(id) || [];
+                const lines = [];
+                lines.push(`<span class="ni-k">节点</span> <b>${id}</b> · <span class="ni-k">度</span> ${nbrs.length}`);
+                lines.push(`<span class="ni-k">邻接</span> ${nbrs.length ? nbrs.map(n => `<b>${n}</b>`).join(' ') : '无'}`);
+                lines.push(`<span class="ni-k">点权</span> ${ws.length ? ws.map((v, i) => `<span class="ni-w" style="background:${SLOT_COLORS[i]}">${esc(v)}</span>`).join(' ') : '无'}`);
+                nodeInfo.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+            }
+
+            function selectEdge(i) {
+                const e = edges[i];
+                if (!e) return;
+                selectedEdge = i;
+                selectedNode = null;
+                svg.querySelectorAll('.node-g.selected, .edge-g.selected').forEach(g => g.classList.remove('selected'));
+                const g = svg.querySelector(`.edge-g[data-i="${i}"]`);
+                if (g) g.classList.add('selected');
+                const arrow = directed ? ' → ' : ' — ';
+                const lines = [];
+                lines.push(`<span class="ni-k">边</span> <b>${e.u}</b>${arrow}<b>${e.v}</b> ${directed ? '(有向)' : '(无向)'}`);
+                lines.push(`<span class="ni-k">边权</span> ${e.weights.length ? e.weights.map((v, idx) => `<span class="ni-w" style="background:${SLOT_COLORS[idx]}">${esc(v)}</span>`).join(' ') : '无'}`);
+                nodeInfo.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+            }
+
+            function applyExample(ex) {
+                directed = !!ex.dir;
+                dirSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', +b.dataset.dir === (directed ? 1 : 0)));
+                edgeInput.value = ex.edges;
+                weightInput.value = ex.weights;
+                positions.clear();
+                lastSig = '';
+                build(false);
+                relayout(idList, edges, 280, true);
+                render();
+            }
+
+            function setZoom(z) {
+                zoom = clamp(z, 0.3, 3);
+                zoomLabel.textContent = Math.round(zoom * 100) + '%';
+                render();
+            }
+
+            function exportSVG() {
+                if (idList.length === 0) return;
+                const clone = svg.cloneNode(true);
+                clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                const data = new XMLSerializer().serializeToString(clone);
+                const blob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = (directed ? 'digraph' : 'graph') + '.svg';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
+
+            // ===== 事件 =====
+            dirSeg.addEventListener('click', e => {
+                const btn = e.target.closest('button[data-dir]');
+                if (!btn) return;
+                directed = +btn.dataset.dir === 1;
+                dirSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+                statsLine.textContent = [`节点 ${idList.length}`, `边 ${edges.length}`, directed ? '有向' : '无向'].join(' · ');
+                render();
+            });
+
+            // 输入变化：解析结构，拓扑变化时温和重新布局
+            edgeInput.addEventListener('input', () => build(true));
+            weightInput.addEventListener('input', () => build(true));
+
+            [optNodeW, optEdgeW, optLabel].forEach(cb => cb.addEventListener('change', render));
+
+            svg.addEventListener('click', e => {
+                const ng = e.target.closest('.node-g');
+                if (ng) { selectNode(ng.dataset.id); return; }
+                const eg = e.target.closest('.edge-g');
+                if (eg) { selectEdge(+eg.dataset.i); return; }
+            });
+
+            $('relayoutBtn').addEventListener('click', () => {
+                relayout(idList, edges, 320, true);
+                render();
+            });
+            $('zoomIn').addEventListener('click', () => setZoom(zoom * 1.15));
+            $('zoomOut').addEventListener('click', () => setZoom(zoom / 1.15));
+            $('zoomReset').addEventListener('click', () => setZoom(1));
+            $('exportBtn').addEventListener('click', exportSVG);
+
+            // 示例按钮
+            const exBtns = $('exampleButtons');
+            EXAMPLES.forEach(ex => {
+                const b = document.createElement('button');
+                b.className = 'example-btn';
+                b.textContent = ex.name;
+                b.addEventListener('click', () => applyExample(ex));
+                exBtns.appendChild(b);
+            });
+
+            // 初始化
+            edgeInput.value = EXAMPLES[0].edges;
+            weightInput.value = EXAMPLES[0].weights;
+            build(false);
+            relayout(idList, edges, 280, true);
+            render();
+        })();
+    </script>
+</body>
+
+</html>
