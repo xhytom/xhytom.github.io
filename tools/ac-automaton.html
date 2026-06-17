@@ -479,6 +479,170 @@
             display: inline-block;
         }
 
+        .viz-box {
+            position: relative;
+        }
+
+        .viz-expand {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid #dce5f0;
+            background: rgba(255, 255, 255, 0.92);
+            color: #0f2b3d;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+            transition: all 0.15s;
+        }
+
+        .viz-expand:hover {
+            background: #0f2b3d;
+            color: #fff;
+        }
+
+        .bigview {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(10, 15, 28, 0.92);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bigview.open {
+            display: flex;
+        }
+
+        .bigview-stage {
+            position: relative;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+            background-color: #fafcff;
+            background-image: radial-gradient(#dbe7f3 1px, transparent 1px);
+            background-size: 18px 18px;
+            border-radius: 0.8rem;
+            overflow: hidden;
+        }
+
+        .bigview-stage svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .bigview-canvas {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .bv-toolbar {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 2;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            max-width: calc(100% - 130px);
+            background: rgba(255, 255, 255, 0.96);
+            padding: 6px;
+            border-radius: 2rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .bv-tool,
+        .bv-width {
+            border: none;
+            background: #eef2f8;
+            color: #0f2b3d;
+            min-width: 38px;
+            height: 38px;
+            padding: 0 10px;
+            border-radius: 2rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .bv-tool.active,
+        .bv-width.active {
+            background: #0f2b3d;
+            color: #fff;
+        }
+
+        .bv-color {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 1px #cbd5e1;
+            cursor: pointer;
+        }
+
+        .bv-color.active {
+            box-shadow: 0 0 0 2px #2563eb;
+        }
+
+        .bv-sep {
+            width: 1px;
+            height: 26px;
+            background: #cbd5e1;
+            margin: 0 2px;
+        }
+
+        .bv-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 2;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.96);
+            color: #0f2b3d;
+            font-size: 1.3rem;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            transition: all 0.15s;
+        }
+
+        .bv-close:hover {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .bv-hint {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.72);
+            font-size: 0.75rem;
+            font-family: monospace;
+            white-space: nowrap;
+        }
+
         footer {
             text-align: center;
             font-size: 0.7rem;
@@ -558,8 +722,11 @@
             <!-- 自动机可视化 -->
             <section class="converter">
                 <div class="section-title">🧭 自动机结构</div>
-                <div class="viz-wrap" id="vizWrap">
-                    <svg id="automatonSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+                <div class="viz-box">
+                    <button class="viz-expand" id="vizExpand" title="展开大图">⛶</button>
+                    <div class="viz-wrap" id="vizWrap">
+                        <svg id="automatonSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+                    </div>
                 </div>
                 <div class="node-info" id="nodeInfo">💡 点击任意节点查看详情（fail 指针、完整路径、可输出模式）</div>
             </section>
@@ -578,6 +745,28 @@
         <footer>
             ⚙ Aho-Corasick 自动机 | Trie + fail 指针 (BFS 构建) | 浏览器内计算 | 节点可点击查看转移细节
         </footer>
+    </div>
+
+    <div class="bigview" id="bigview">
+        <div class="bv-toolbar" id="bvToolbar">
+            <button class="bv-tool active" data-tool="pen" title="画笔">✏️</button>
+            <button class="bv-tool" data-tool="eraser" title="橡皮擦">🧽</button>
+            <span class="bv-sep"></span>
+            <span class="bv-color active" data-color="#dc2626" style="background:#dc2626" title="红"></span>
+            <span class="bv-color" data-color="#0f172a" style="background:#0f172a" title="黑"></span>
+            <span class="bv-color" data-color="#2563eb" style="background:#2563eb" title="蓝"></span>
+            <span class="bv-color" data-color="#f59e0b" style="background:#f59e0b" title="橙"></span>
+            <span class="bv-sep"></span>
+            <button class="bv-width active" data-w="3" title="细线">细</button>
+            <button class="bv-width" data-w="7" title="粗线">粗</button>
+            <span class="bv-sep"></span>
+            <button class="bv-tool" data-tool="clear" title="清空草稿">🗑</button>
+        </div>
+        <button class="bv-close" id="bvClose" title="关闭大图">✕</button>
+        <div class="bigview-stage" id="bvStage">
+            <canvas class="bigview-canvas" id="bvCanvas"></canvas>
+        </div>
+        <div class="bv-hint">按住鼠标绘制草稿 · 橡皮擦擦除 · Esc 或点击空白关闭 · 草稿为临时绘制不会保存</div>
     </div>
 
     <script>
@@ -943,6 +1132,142 @@
                     rebuild();
                 });
             });
+
+            // ===== 大图查看 + 草稿绘制 =====
+            const bigview = $('bigview');
+            const bvStage = $('bvStage');
+            const bvCanvas = $('bvCanvas');
+            const bvToolbar = $('bvToolbar');
+            let bvCtx = null, bvClone = null;
+            let bvTool = 'pen', bvColor = '#dc2626', bvWidth = 3;
+            let bvDrawing = false, bvLX = 0, bvLY = 0;
+
+            function bvFit() {
+                if (!bvClone) return;
+                const W = parseFloat(bvClone.dataset.w);
+                const H = parseFloat(bvClone.dataset.h);
+                const fit = Math.min((window.innerWidth - 80) / W, (window.innerHeight - 90) / H, 1.6);
+                const dispW = Math.max(240, Math.round(W * fit));
+                const dispH = Math.max(200, Math.round(H * fit));
+                bvStage.style.width = dispW + 'px';
+                bvStage.style.height = dispH + 'px';
+                const dpr = window.devicePixelRatio || 1;
+                bvCanvas.width = dispW * dpr;
+                bvCanvas.height = dispH * dpr;
+                bvCtx = bvCanvas.getContext('2d');
+                bvCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                bvCtx.lineCap = 'round';
+                bvCtx.lineJoin = 'round';
+            }
+
+            function openBigView() {
+                const W = parseFloat(svg.getAttribute('width')) || svg.clientWidth || 800;
+                const H = parseFloat(svg.getAttribute('height')) || svg.clientHeight || 600;
+                if (bvClone) { bvClone.remove(); bvClone = null; }
+                bvClone = svg.cloneNode(true);
+                bvClone.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+                bvClone.removeAttribute('width');
+                bvClone.removeAttribute('height');
+                bvClone.style.width = '100%';
+                bvClone.style.height = '100%';
+                bvClone.dataset.w = W;
+                bvClone.dataset.h = H;
+                bvStage.insertBefore(bvClone, bvCanvas);
+                bvFit();
+                setBvTool('pen');
+                bigview.classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeBigView() {
+                bigview.classList.remove('open');
+                document.body.style.overflow = '';
+                if (bvClone) { bvClone.remove(); bvClone = null; }
+                bvCtx = null;
+            }
+
+            function setBvTool(t) {
+                if (t === 'pen' || t === 'eraser') bvTool = t;
+                bvToolbar.querySelectorAll('.bv-tool').forEach(b => {
+                    if (b.dataset.tool !== 'clear') b.classList.toggle('active', b.dataset.tool === bvTool);
+                });
+                bvCanvas.style.cursor = bvTool === 'eraser' ? 'cell' : 'crosshair';
+            }
+
+            function bvApply() {
+                if (!bvCtx) return;
+                if (bvTool === 'eraser') {
+                    bvCtx.globalCompositeOperation = 'destination-out';
+                    bvCtx.lineWidth = bvWidth * 5;
+                    bvCtx.strokeStyle = '#000';
+                    bvCtx.fillStyle = '#000';
+                } else {
+                    bvCtx.globalCompositeOperation = 'source-over';
+                    bvCtx.lineWidth = bvWidth;
+                    bvCtx.strokeStyle = bvColor;
+                    bvCtx.fillStyle = bvColor;
+                }
+            }
+
+            function bvPos(e) {
+                const r = bvCanvas.getBoundingClientRect();
+                return { x: e.clientX - r.left, y: e.clientY - r.top };
+            }
+
+            bvCanvas.addEventListener('pointerdown', e => {
+                e.preventDefault();
+                bvDrawing = true;
+                bvCanvas.setPointerCapture(e.pointerId);
+                const p = bvPos(e);
+                bvLX = p.x; bvLY = p.y;
+                bvApply();
+                bvCtx.beginPath();
+                bvCtx.arc(p.x, p.y, (bvTool === 'eraser' ? bvWidth * 2.5 : bvWidth / 2), 0, Math.PI * 2);
+                bvCtx.fill();
+            });
+            bvCanvas.addEventListener('pointermove', e => {
+                if (!bvDrawing) return;
+                const p = bvPos(e);
+                bvApply();
+                bvCtx.beginPath();
+                bvCtx.moveTo(bvLX, bvLY);
+                bvCtx.lineTo(p.x, p.y);
+                bvCtx.stroke();
+                bvLX = p.x; bvLY = p.y;
+            });
+            ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev =>
+                bvCanvas.addEventListener(ev, () => { bvDrawing = false; })
+            );
+
+            bvToolbar.addEventListener('click', e => {
+                const tb = e.target.closest('.bv-tool');
+                if (tb) {
+                    if (tb.dataset.tool === 'clear') {
+                        if (bvCtx) bvCtx.clearRect(0, 0, bvCanvas.width, bvCanvas.height);
+                        return;
+                    }
+                    setBvTool(tb.dataset.tool);
+                    return;
+                }
+                const wb = e.target.closest('.bv-width');
+                if (wb) {
+                    bvWidth = +wb.dataset.w;
+                    bvToolbar.querySelectorAll('.bv-width').forEach(b => b.classList.toggle('active', b === wb));
+                    return;
+                }
+                const cb = e.target.closest('.bv-color');
+                if (cb) {
+                    bvColor = cb.dataset.color;
+                    bvToolbar.querySelectorAll('.bv-color').forEach(b => b.classList.toggle('active', b === cb));
+                    setBvTool('pen');
+                }
+            });
+
+            $('bvClose').addEventListener('click', closeBigView);
+            bigview.addEventListener('click', e => { if (e.target === bigview) closeBigView(); });
+            document.addEventListener('keydown', e => { if (e.key === 'Escape' && bigview.classList.contains('open')) closeBigView(); });
+            window.addEventListener('resize', () => { if (bigview.classList.contains('open')) bvFit(); });
+            $('vizExpand').addEventListener('click', openBigView);
 
             // 初始化
             rebuild();
