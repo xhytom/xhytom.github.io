@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>AC 自动机可视化 | Aho-Corasick 多模式匹配</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'SF Pro Text', 'Inter', 'Roboto', monospace;
+        }
+
+        body {
+            background: linear-gradient(145deg, #f5f7fc 0%, #eef2f8 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 1.5rem;
+        }
+
+        .card {
+            max-width: 920px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(2px);
+            border-radius: 2.5rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #10182f 0%, #1a253f 100%);
+            padding: 1.8rem 2rem;
+            color: white;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .back-link {
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            padding: 0.35rem 0.75rem;
+            border-radius: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.9rem;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1:before {
+            content: "🧭";
+            font-size: 1.9rem;
+        }
+
+        .header p {
+            margin: 0.6rem 0 0;
+            opacity: 0.8;
+            font-size: 0.9rem;
+            font-family: monospace;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        section.converter {
+            background: #f8fafd;
+            border-radius: 1.8rem;
+            padding: 1.5rem;
+            border: 1px solid #e2edf7;
+            box-shadow: inset 0 1px 2px #00000008, 0 6px 12px -6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        section.converter:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4b6b8f;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #1e2a3e;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        label code {
+            font-family: 'SF Mono', monospace;
+            background: #e9eef3;
+            padding: 0.05rem 0.4rem;
+            border-radius: 0.35rem;
+            font-size: 0.85em;
+            color: #0f2b3d;
+        }
+
+        .input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        input[type="text"] {
+            flex: 4;
+            padding: 0.9rem 1.2rem;
+            font-size: 1rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            background: #fefefe;
+            border: 2px solid #dce5f0;
+            border-radius: 2rem;
+            transition: 0.2s;
+            outline: none;
+            font-weight: 500;
+            color: #0a2540;
+            min-width: 200px;
+        }
+
+        input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        button.action {
+            background: #0f2b3d;
+            border: none;
+            padding: 0.9rem 1.6rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-radius: 2.5rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        button.action:hover {
+            background: #1e3a5f;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+        }
+
+        button.action:active {
+            transform: translateY(1px);
+        }
+
+        .example-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .example-btn {
+            background: #e9eef3;
+            color: #1e293b;
+            border: none;
+            padding: 0.4rem 0.95rem;
+            font-size: 0.78rem;
+            font-family: monospace;
+            font-weight: 500;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .example-btn:hover {
+            background: #d4dfec;
+            color: #0f172a;
+        }
+
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem 1.2rem;
+        }
+
+        .options .check {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: #1e2a3e;
+        }
+
+        .options input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #0f2b3d;
+            cursor: pointer;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem 1.1rem;
+            margin-top: 1rem;
+            font-size: 0.78rem;
+            color: #475569;
+            padding-top: 0.9rem;
+            border-top: 1px dashed #dbe5f0;
+        }
+
+        .lg-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .lg-line {
+            width: 26px;
+            height: 0;
+            border-top: 2.5px solid #475569;
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        .lg-line.fail {
+            border-top-style: dashed;
+            border-color: #ef4444;
+        }
+
+        .lg-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+        }
+
+        .lg-dot.root {
+            background: #0f2b3d;
+        }
+
+        .lg-dot.normal {
+            background: #fff;
+            border: 2px solid #64748b;
+        }
+
+        .lg-dot.end {
+            background: #dcfce7;
+            border: 2px solid #16a34a;
+        }
+
+        .viz-wrap {
+            margin-top: 0.4rem;
+            background-color: #fafcff;
+            background-image: radial-gradient(#dbe7f3 1px, transparent 1px);
+            background-size: 18px 18px;
+            border: 1px solid #e2edf7;
+            border-radius: 1.2rem;
+            padding: 0.5rem;
+            overflow: auto;
+            max-height: 62vh;
+            min-height: 220px;
+        }
+
+        #automatonSvg {
+            display: block;
+            margin: 0 auto;
+        }
+
+        #automatonSvg .trie-edge {
+            stroke: #475569;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        #automatonSvg .fail-edge {
+            stroke: #ef4444;
+            stroke-width: 1.8;
+            fill: none;
+            stroke-dasharray: 6 4;
+            opacity: 0.85;
+        }
+
+        #automatonSvg .edge-label {
+            font: 600 13px 'SF Mono', monospace;
+            fill: #1e293b;
+            paint-order: stroke;
+            stroke: #ffffff;
+            stroke-width: 4px;
+            stroke-linejoin: round;
+        }
+
+        #automatonSvg .node {
+            fill: #ffffff;
+            stroke: #64748b;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: stroke 0.15s, stroke-width 0.15s;
+        }
+
+        #automatonSvg .node.root {
+            fill: #0f2b3d;
+            stroke: #0f2b3d;
+        }
+
+        #automatonSvg .node.end {
+            fill: #dcfce7;
+            stroke: #16a34a;
+            stroke-width: 2.5;
+        }
+
+        #automatonSvg .node-text {
+            font: 600 13px system-ui, sans-serif;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        #automatonSvg .node-text.root {
+            fill: #ffffff;
+        }
+
+        #automatonSvg .node-text.normal {
+            fill: #0f172a;
+        }
+
+        #automatonSvg .node-text.end {
+            fill: #14532d;
+        }
+
+        #automatonSvg .node-idx {
+            font: 500 10px 'SF Mono', monospace;
+            fill: #64748b;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        #automatonSvg .node-g:hover .node {
+            stroke: #2563eb;
+            stroke-width: 3.5;
+        }
+
+        #automatonSvg .node-g.selected .node {
+            stroke: #2563eb;
+            stroke-width: 4;
+        }
+
+        .node-info {
+            margin-top: 0.9rem;
+            font-size: 0.82rem;
+            color: #334155;
+            line-height: 1.8;
+            background: #fff;
+            border: 1px solid #e2edf7;
+            border-radius: 1rem;
+            padding: 0.75rem 1rem;
+        }
+
+        .node-info code {
+            background: #eef2f8;
+            padding: 0.05rem 0.4rem;
+            border-radius: 0.35rem;
+            font-family: 'SF Mono', monospace;
+            color: #0f2b3d;
+        }
+
+        .ni-k {
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .node-info .ni-line {
+            margin-bottom: 0.1rem;
+        }
+
+        .match-output {
+            margin-top: 0.4rem;
+            font-size: 0.85rem;
+            color: #334155;
+        }
+
+        .match-stats {
+            font-size: 0.82rem;
+            color: #4b6b8f;
+            margin-bottom: 0.5rem;
+            min-height: 1.1rem;
+        }
+
+        .match-text {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 1.05rem;
+            letter-spacing: 1px;
+            padding: 0.85rem 1rem;
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 0.9rem;
+            word-break: break-all;
+            line-height: 2;
+            min-height: 2.7rem;
+        }
+
+        .match-text .mhit {
+            background: #16a34a;
+            color: #fff;
+            border-radius: 0.3rem;
+            padding: 0 0.15rem;
+        }
+
+        .match-list {
+            margin-top: 0.65rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .match-tag {
+            background: #dcfce7;
+            color: #14532d;
+            border: 1px solid #86efac;
+            padding: 0.25rem 0.65rem;
+            border-radius: 1rem;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.78rem;
+        }
+
+        .match-tag i {
+            color: #16a34a;
+            font-style: normal;
+            margin-left: 0.2rem;
+        }
+
+        .status {
+            font-size: 0.85rem;
+            margin-top: 0.8rem;
+            color: #4b6b8f;
+            min-height: 1.2rem;
+        }
+
+        .error {
+            color: #c2410c;
+            background: #fff1f0;
+            padding: 0.5rem 0.9rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            padding: 1rem 2rem 1.5rem;
+            color: #7e8b9e;
+            border-top: 1px solid #eef2f8;
+            font-family: monospace;
+        }
+
+        @media (max-width: 600px) {
+            .content {
+                padding: 1.5rem;
+            }
+
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .header-top {
+                flex-direction: column-reverse;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="header">
+            <div class="header-top">
+                <div>
+                    <h1>AC 自动机可视化</h1>
+                    <p>Aho-Corasick · 多模式串匹配自动机 | 用 | 分隔多个模式串</p>
+                </div>
+                <a href="../index.html" class="back-link">← 返回主页</a>
+            </div>
+        </div>
+        <div class="content">
+            <!-- 模式串输入 -->
+            <section class="converter">
+                <div class="section-title">🔤 模式串集合</div>
+                <label>输入模式串（用 <code>|</code> 分隔，支持大小写字母与数字）</label>
+                <div class="input-group">
+                    <input type="text" id="patternInput" value="he|she|his|hers"
+                        placeholder="例如: he|she|his|hers">
+                    <button class="action" id="buildBtn">⚙ 构建自动机</button>
+                </div>
+                <div class="example-buttons">
+                    <button class="example-btn" data-pat="he|she|his|hers">经典 AC 例</button>
+                    <button class="example-btn" data-pat="a|ab|bab|bc|bca|c|caa">多分支</button>
+                    <button class="example-btn" data-pat="abc|bcd|cde">链式后缀</button>
+                    <button class="example-btn" data-pat="ab|bc|cd|de">短串后缀</button>
+                    <button class="example-btn" data-pat="AT|CG|ATCG|GCAT|T">DNA (大写)</button>
+                    <button class="example-btn" data-pat="123|234|345|12|1">数字串</button>
+                </div>
+                <div class="status" id="buildStatus"></div>
+            </section>
+
+            <!-- 显示选项 + 图例 -->
+            <section class="converter">
+                <div class="section-title">🎛 显示选项</div>
+                <div class="options">
+                    <label class="check"><input type="checkbox" id="optFail" checked> 显示 fail 指针</label>
+                    <label class="check"><input type="checkbox" id="optRootFail"> 显示指向根的 fail</label>
+                    <label class="check"><input type="checkbox" id="optIndex"> 显示节点编号</label>
+                </div>
+                <div class="legend">
+                    <span class="lg-item"><span class="lg-line"></span> Trie 转移边</span>
+                    <span class="lg-item"><span class="lg-line fail"></span> fail 指针</span>
+                    <span class="lg-item"><span class="lg-dot root"></span> 根节点</span>
+                    <span class="lg-item"><span class="lg-dot normal"></span> 普通节点</span>
+                    <span class="lg-item"><span class="lg-dot end"></span> 模式串结尾</span>
+                </div>
+            </section>
+
+            <!-- 自动机可视化 -->
+            <section class="converter">
+                <div class="section-title">🧭 自动机结构</div>
+                <div class="viz-wrap" id="vizWrap">
+                    <svg id="automatonSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+                </div>
+                <div class="node-info" id="nodeInfo">💡 点击任意节点查看详情（fail 指针、完整路径、可输出模式）</div>
+            </section>
+
+            <!-- 匹配演示 -->
+            <section class="converter">
+                <div class="section-title">🔍 匹配演示</div>
+                <label>输入待匹配文本（自动沿 fail 链报告所有命中）</label>
+                <div class="input-group">
+                    <input type="text" id="textInput" value="ushers" placeholder="例如: ushers">
+                    <button class="action" id="matchBtn">▶ 匹配</button>
+                </div>
+                <div class="match-output" id="matchOutput"></div>
+            </section>
+        </div>
+        <footer>
+            ⚙ Aho-Corasick 自动机 | Trie + fail 指针 (BFS 构建) | 浏览器内计算 | 节点可点击查看转移细节
+        </footer>
+    </div>
+
+    <script>
+        (function () {
+            const $ = id => document.getElementById(id);
+            const patternInput = $('patternInput');
+            const buildBtn = $('buildBtn');
+            const buildStatus = $('buildStatus');
+            const svg = $('automatonSvg');
+            const nodeInfo = $('nodeInfo');
+            const textInput = $('textInput');
+            const matchBtn = $('matchBtn');
+            const matchOutput = $('matchOutput');
+            const optFail = $('optFail');
+            const optRootFail = $('optRootFail');
+            const optIndex = $('optIndex');
+
+            // 布局常量
+            const H_SPACING = 58;
+            const V_SPACING = 82;
+            const MARGIN_X = 46;
+            const MARGIN_TOP = 40;
+            const NODE_R = 15;
+
+            // 节点结构：{ char, parent, children:Map, fail, end, pathStr, patterns:[], depth, x, px, py }
+            let nodes = [];
+            let selectedId = -1;
+
+            function esc(s) {
+                return String(s).replace(/[&<>"]/g, c => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
+                }[c]));
+            }
+
+            function setStatus(el, text, isError) {
+                if (isError) el.innerHTML = `<span class="error">⚠️ ${text}</span>`;
+                else el.innerHTML = text;
+            }
+
+            function makeRoot() {
+                return [{
+                    char: '', parent: -1, children: new Map(), fail: 0, end: false,
+                    pathStr: '', patterns: [], depth: 0, x: 0, px: 0, py: 0
+                }];
+            }
+
+            // 解析输入：以 | 分隔，仅保留 [A-Za-z0-9]
+            function parsePatterns(raw) {
+                const parts = raw.split('|');
+                const patterns = [];
+                let dropped = 0;
+                for (const part of parts) {
+                    let clean = '';
+                    for (const ch of part) {
+                        if (/[A-Za-z0-9]/.test(ch)) clean += ch;
+                        else if (ch.trim() !== '') dropped++;
+                    }
+                    if (clean.length) patterns.push(clean);
+                }
+                return { patterns, dropped };
+            }
+
+            // 构建 Trie
+            function buildTrie(patterns) {
+                nodes = makeRoot();
+                for (const pat of patterns) {
+                    let cur = 0;
+                    for (const ch of pat) {
+                        if (!nodes[cur].children.has(ch)) {
+                            const id = nodes.length;
+                            nodes.push({
+                                char: ch, parent: cur, children: new Map(), fail: 0, end: false,
+                                pathStr: nodes[cur].pathStr + ch, patterns: [],
+                                depth: nodes[cur].depth + 1, x: 0, px: 0, py: 0
+                            });
+                            nodes[cur].children.set(ch, id);
+                        }
+                        cur = nodes[cur].children.get(ch);
+                    }
+                    nodes[cur].end = true;
+                    if (!nodes[cur].patterns.includes(pat)) nodes[cur].patterns.push(pat);
+                }
+            }
+
+            // BFS 构建 fail 指针
+            function buildFail() {
+                const queue = [];
+                for (const child of nodes[0].children.values()) {
+                    nodes[child].fail = 0;
+                    queue.push(child);
+                }
+                let head = 0;
+                while (head < queue.length) {
+                    const u = queue[head++];
+                    for (const [ch, v] of nodes[u].children) {
+                        let f = nodes[u].fail;
+                        while (f !== 0 && !nodes[f].children.has(ch)) f = nodes[f].fail;
+                        nodes[v].fail = nodes[f].children.has(ch) ? nodes[f].children.get(ch) : 0;
+                        if (nodes[v].fail === v) nodes[v].fail = 0;
+                        queue.push(v);
+                    }
+                }
+            }
+
+            // 树形布局：叶子从左到右占位，内部节点居中于子节点
+            function layout() {
+                let leaf = 0;
+                function rec(id) {
+                    const node = nodes[id];
+                    const childIds = [...node.children.values()]
+                        .sort((a, b) => nodes[a].char < nodes[b].char ? -1 : nodes[a].char > nodes[b].char ? 1 : 0);
+                    if (childIds.length === 0) {
+                        node.x = leaf++;
+                        return node.x;
+                    }
+                    let first = 0, last = 0;
+                    childIds.forEach((cid, i) => {
+                        const cx = rec(cid);
+                        if (i === 0) first = cx;
+                        if (i === childIds.length - 1) last = cx;
+                    });
+                    node.x = (first + last) / 2;
+                    return node.x;
+                }
+                rec(0);
+                return leaf;
+            }
+
+            function applyCoords() {
+                let maxX = 0, maxDepth = 0;
+                nodes.forEach(n => {
+                    if (n.x > maxX) maxX = n.x;
+                    if (n.depth > maxDepth) maxDepth = n.depth;
+                });
+                const width = Math.max(maxX * H_SPACING + MARGIN_X * 2 + NODE_R * 2, 200);
+                const height = MARGIN_TOP + maxDepth * V_SPACING + NODE_R * 2 + 28;
+                nodes.forEach(n => {
+                    n.px = MARGIN_X + n.x * H_SPACING;
+                    n.py = MARGIN_TOP + n.depth * V_SPACING;
+                });
+                return { width, height };
+            }
+
+            // 渲染 SVG
+            function render() {
+                const { width, height } = applyCoords();
+                const showFail = optFail.checked;
+                const showRootFail = optRootFail.checked;
+                const showIndex = optIndex.checked;
+
+                let out = '';
+                out += `<defs>
+                    <marker id="arrowFail" viewBox="0 0 10 10" markerWidth="10" markerHeight="10"
+                        refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                        <path d="M0,0 L10,5 L0,10 Z" fill="#ef4444"></path>
+                    </marker>
+                </defs>`;
+
+                // fail 边（置底）
+                if (showFail) {
+                    for (let i = 1; i < nodes.length; i++) {
+                        const n = nodes[i];
+                        if (n.fail === i) continue;
+                        if (n.fail === 0 && !showRootFail) continue;
+                        const t = nodes[n.fail];
+                        const dx = t.px - n.px, dy = t.py - n.py;
+                        const len = Math.hypot(dx, dy) || 1;
+                        const ux = dx / len, uy = dy / len;
+                        const sx = n.px + ux * (NODE_R + 2);
+                        const sy = n.py + uy * (NODE_R + 2);
+                        const ex = t.px - ux * (NODE_R + 7);
+                        const ey = t.py - uy * (NODE_R + 7);
+                        const cx = (sx + ex) / 2;
+                        const cy = Math.min(sy, ey) - 30;
+                        out += `<path class="fail-edge" d="M ${sx.toFixed(1)} ${sy.toFixed(1)} Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}" marker-end="url(#arrowFail)"></path>`;
+                    }
+                }
+
+                // Trie 边 + 字符标签
+                for (let i = 1; i < nodes.length; i++) {
+                    const n = nodes[i];
+                    const p = nodes[n.parent];
+                    out += `<line class="trie-edge" x1="${p.px.toFixed(1)}" y1="${p.py.toFixed(1)}" x2="${n.px.toFixed(1)}" y2="${n.py.toFixed(1)}"></line>`;
+                    const lx = p.px + (n.px - p.px) * 0.5;
+                    const ly = p.py + (n.py - p.py) * 0.5;
+                    out += `<text class="edge-label" x="${lx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" text-anchor="middle">${esc(n.char)}</text>`;
+                }
+
+                // 节点
+                for (let i = 0; i < nodes.length; i++) {
+                    const n = nodes[i];
+                    const isRoot = i === 0;
+                    let cls = 'node';
+                    let tcls = 'node-text normal';
+                    if (isRoot) { cls += ' root'; tcls = 'node-text root'; }
+                    else if (n.end) { cls += ' end'; tcls = 'node-text end'; }
+                    const sel = selectedId === i ? ' selected' : '';
+                    const label = isRoot ? 'ε' : n.char;
+                    const title = isRoot
+                        ? `根节点 #0 (空串 ε)`
+                        : `节点 #${i} · 路径 "${n.pathStr}" · 字符 '${n.char}'\nfail → #${n.fail} ("${nodes[n.fail].pathStr || 'ε'}")\n结尾模式: ${n.end ? n.patterns.join(', ') : '无'}`;
+                    out += `<g class="node-g${sel}" data-id="${i}">`;
+                    out += `<title>${esc(title)}</title>`;
+                    out += `<circle class="${cls}" cx="${n.px.toFixed(1)}" cy="${n.py.toFixed(1)}" r="${NODE_R}"></circle>`;
+                    out += `<text class="${tcls}" x="${n.px.toFixed(1)}" y="${n.py.toFixed(1)}" text-anchor="middle" dominant-baseline="central">${esc(label)}</text>`;
+                    if (showIndex) {
+                        out += `<text class="node-idx" x="${n.px.toFixed(1)}" y="${(n.py + NODE_R + 12).toFixed(1)}" text-anchor="middle">#${i}</text>`;
+                    }
+                    out += `</g>`;
+                }
+
+                svg.setAttribute('width', width);
+                svg.setAttribute('height', height);
+                svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+                svg.innerHTML = out;
+            }
+
+            // 选中节点，展示详情
+            function selectNode(id) {
+                selectedId = id;
+                svg.querySelectorAll('.node-g.selected').forEach(g => g.classList.remove('selected'));
+                const g = svg.querySelector(`.node-g[data-id="${id}"]`);
+                if (g) g.classList.add('selected');
+
+                const n = nodes[id];
+                if (id === 0) {
+                    nodeInfo.innerHTML =
+                        `<div class="ni-line"><span class="ni-k">根节点 #0</span> · 空串 ε · 深度 0 · fail → 自身</div>`;
+                    return;
+                }
+
+                // fail 链
+                const chain = [];
+                let t = n.fail;
+                let guard = 0;
+                while (t !== 0 && guard++ < 200) { chain.push(t); t = nodes[t].fail; }
+                const chainStr = chain.length
+                    ? chain.map(i => `#${i}("${esc(nodes[i].pathStr)}")`).join(' → ') + ' → #0'
+                    : '→ #0 (根)';
+
+                // 沿 fail 链可输出的模式
+                const outputs = [];
+                let t2 = id;
+                let guard2 = 0;
+                while (t2 !== 0 && guard2++ < 200) {
+                    if (nodes[t2].end) nodes[t2].patterns.forEach(p => { if (!outputs.includes(p)) outputs.push(p); });
+                    t2 = nodes[t2].fail;
+                }
+
+                const failLabel = n.fail === 0 ? '#0 (根)' : `#${n.fail} ("${esc(nodes[n.fail].pathStr)}")`;
+                const lines = [
+                    `<span class="ni-k">节点</span> <b>#${id}</b> · <span class="ni-k">字符</span> <code>'${esc(n.char)}'</code> · <span class="ni-k">深度</span> ${n.depth}`,
+                    `<span class="ni-k">完整路径</span> <code>"${esc(n.pathStr)}"</code>`,
+                    `<span class="ni-k">fail →</span> ${failLabel}`,
+                    `<span class="ni-k">fail 链</span> ${chainStr}`,
+                    `<span class="ni-k">结尾模式</span> ${n.end ? n.patterns.map(p => `<code>"${esc(p)}"</code>`).join(' ') : '无'}`,
+                    `<span class="ni-k">沿 fail 可输出</span> ${outputs.length ? outputs.map(p => `<code>"${esc(p)}"</code>`).join(' ') : '无'}`
+                ];
+                nodeInfo.innerHTML = lines.map(l => `<div class="ni-line">${l}</div>`).join('');
+            }
+
+            // 构建 + 渲染
+            function rebuild() {
+                const raw = patternInput.value;
+                const { patterns, dropped } = parsePatterns(raw);
+                if (patterns.length === 0) {
+                    nodes = makeRoot();
+                    layout();
+                    render();
+                    selectedId = -1;
+                    if (raw.trim()) {
+                        setStatus(buildStatus, '未识别到有效模式串（仅支持大小写字母与数字）', true);
+                    } else {
+                        setStatus(buildStatus, '');
+                    }
+                    nodeInfo.innerHTML = '💡 点击任意节点查看详情';
+                    matchOutput.innerHTML = '<div class="match-stats">— 请先构建自动机 —</div>';
+                    return;
+                }
+                buildTrie(patterns);
+                buildFail();
+                layout();
+                render();
+                const endCount = nodes.filter(n => n.end).length;
+                let msg = `✔ 构建完成 · ${patterns.length} 个模式串 · ${nodes.length} 个节点（${endCount} 个结尾节点）`;
+                if (dropped > 0) msg += ` · 已忽略 ${dropped} 个非法字符`;
+                setStatus(buildStatus, msg);
+                selectedId = -1;
+                nodeInfo.innerHTML = '💡 点击任意节点查看详情（fail 指针、完整路径、可输出模式）';
+                runMatch();
+            }
+
+            // 匹配演示
+            function runMatch() {
+                const text = textInput.value;
+                if (!nodes.length || nodes.length <= 1) {
+                    matchOutput.innerHTML = '<div class="match-stats">— 请先构建自动机 —</div>';
+                    return;
+                }
+                if (!text) {
+                    matchOutput.innerHTML = '<div class="match-stats">— 输入文本后点击匹配 —</div>';
+                    return;
+                }
+
+                const matches = []; // { end, str }
+                let cur = 0;
+                for (let i = 0; i < text.length; i++) {
+                    const ch = text[i];
+                    while (cur !== 0 && !nodes[cur].children.has(ch)) cur = nodes[cur].fail;
+                    if (nodes[cur].children.has(ch)) cur = nodes[cur].children.get(ch);
+                    else cur = 0;
+                    let t = cur;
+                    let guard = 0;
+                    while (t !== 0 && guard++ < 500) {
+                        if (nodes[t].end) {
+                            for (const p of nodes[t].patterns) {
+                                matches.push({ end: i, str: p });
+                            }
+                        }
+                        t = nodes[t].fail;
+                    }
+                }
+
+                // 高亮命中区间
+                const marks = new Array(text.length).fill(false);
+                matches.forEach(m => {
+                    const start = m.end - m.str.length + 1;
+                    for (let k = Math.max(0, start); k <= m.end; k++) marks[k] = true;
+                });
+                let html = '';
+                for (let i = 0; i < text.length; i++) {
+                    html += marks[i] ? `<span class="mhit">${esc(text[i])}</span>` : esc(text[i]);
+                }
+
+                let out = `<div class="match-stats">命中 <b>${matches.length}</b> 处 · 文本长度 ${text.length}</div>`;
+                out += `<div class="match-text">${html || ' '}</div>`;
+                if (matches.length) {
+                    out += `<div class="match-list">${matches
+                        .map(m => `<span class="match-tag">${esc(m.str)}<i>@${m.end}</i></span>`)
+                        .join('')}</div>`;
+                }
+                matchOutput.innerHTML = out;
+            }
+
+            // 事件绑定
+            patternInput.addEventListener('input', rebuild);
+            buildBtn.addEventListener('click', rebuild);
+
+            [optFail, optRootFail, optIndex].forEach(cb => cb.addEventListener('change', render));
+
+            svg.addEventListener('click', e => {
+                const g = e.target.closest('.node-g');
+                if (!g) return;
+                selectNode(+g.dataset.id);
+            });
+
+            textInput.addEventListener('input', runMatch);
+            matchBtn.addEventListener('click', runMatch);
+
+            document.querySelectorAll('.example-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    patternInput.value = btn.dataset.pat;
+                    rebuild();
+                });
+            });
+
+            // 初始化
+            rebuild();
+        })();
+    </script>
+</body>
+
+</html>
