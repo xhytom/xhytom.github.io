@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>树形图绘制 | 图论画图工具</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'SF Pro Text', 'Inter', 'Roboto', monospace;
+        }
+
+        body {
+            background: linear-gradient(145deg, #f5f7fc 0%, #eef2f8 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 1.5rem;
+        }
+
+        .card {
+            max-width: 960px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(2px);
+            border-radius: 2.5rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #10182f 0%, #1a253f 100%);
+            padding: 1.8rem 2rem;
+            color: white;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .back-link {
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            padding: 0.35rem 0.75rem;
+            border-radius: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.9rem;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1:before {
+            content: "🌳";
+            font-size: 1.9rem;
+        }
+
+        .header p {
+            margin: 0.6rem 0 0;
+            opacity: 0.8;
+            font-size: 0.9rem;
+            font-family: monospace;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        section.converter {
+            background: #f8fafd;
+            border-radius: 1.8rem;
+            padding: 1.5rem;
+            border: 1px solid #e2edf7;
+            box-shadow: inset 0 1px 2px #00000008, 0 6px 12px -6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        section.converter:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4b6b8f;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #1e2a3e;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        label code,
+        .hint code,
+        .node-info code {
+            font-family: 'SF Mono', monospace;
+            background: #e9eef3;
+            padding: 0.05rem 0.4rem;
+            border-radius: 0.35rem;
+            font-size: 0.85em;
+            color: #0f2b3d;
+        }
+
+        .field-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem 1.6rem;
+            align-items: flex-end;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .field label {
+            margin: 0;
+            font-size: 0.78rem;
+        }
+
+        .seg {
+            display: inline-flex;
+            background: #eef2f8;
+            padding: 4px;
+            border-radius: 2rem;
+            border: 2px solid #dce5f0;
+            gap: 4px;
+        }
+
+        .seg button {
+            border: none;
+            background: transparent;
+            color: #4b6b8f;
+            padding: 0.5rem 1.1rem;
+            font-size: 0.84rem;
+            font-weight: 600;
+            border-radius: 2rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+
+        .seg button.active {
+            background: #fff;
+            color: #0f2b3d;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        input[type="number"] {
+            width: 100px;
+            padding: 0.55rem 0.8rem;
+            font-size: 0.95rem;
+            font-family: 'SF Mono', monospace;
+            background: #fefefe;
+            border: 2px solid #dce5f0;
+            border-radius: 1.2rem;
+            transition: 0.2s;
+            outline: none;
+            font-weight: 600;
+            color: #0a2540;
+        }
+
+        input[type="number"]:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 130px;
+            padding: 0.8rem 1rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            background: #fefefe;
+            border: 2px solid #dce5f0;
+            border-radius: 1.2rem;
+            resize: vertical;
+            outline: none;
+            color: #0a2540;
+            line-height: 1.65;
+            transition: 0.2s;
+        }
+
+        textarea:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .hint {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 0.45rem;
+            font-family: monospace;
+            line-height: 1.5;
+        }
+
+        .example-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .example-btn {
+            background: #e9eef3;
+            color: #1e293b;
+            border: none;
+            padding: 0.4rem 0.95rem;
+            font-size: 0.78rem;
+            font-family: monospace;
+            font-weight: 500;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .example-btn:hover {
+            background: #d4dfec;
+            color: #0f172a;
+        }
+
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem 1.2rem;
+        }
+
+        .options .check {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: #1e2a3e;
+        }
+
+        .options input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #0f2b3d;
+            cursor: pointer;
+        }
+
+        .swatch {
+            display: inline-block;
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-left: 0.15rem;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.7rem;
+            font-size: 0.78rem;
+            color: #4b6b8f;
+        }
+
+        .toolbar .spacer {
+            flex: 1;
+        }
+
+        .zoom-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid #dce5f0;
+            background: #fff;
+            color: #0f2b3d;
+            cursor: pointer;
+            font-size: 1.05rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .zoom-btn:hover {
+            background: #eef2f8;
+        }
+
+        .text-btn {
+            border: 1px solid #dce5f0;
+            background: #fff;
+            color: #0f2b3d;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 0.4rem 0.85rem;
+            border-radius: 2rem;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+
+        .text-btn:hover {
+            background: #eef2f8;
+        }
+
+        .viz-wrap {
+            background-color: #fafcff;
+            background-image: radial-gradient(#dbe7f3 1px, transparent 1px);
+            background-size: 18px 18px;
+            border: 1px solid #e2edf7;
+            border-radius: 1.2rem;
+            padding: 0.5rem;
+            overflow: auto;
+            max-height: 62vh;
+            min-height: 240px;
+        }
+
+        #treeSvg {
+            display: block;
+            margin: 0 auto;
+        }
+
+        #treeSvg .tree-edge {
+            stroke: #475569;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        #treeSvg .edge-label {
+            font: 600 12px 'SF Mono', monospace;
+            fill: #9a3412;
+            paint-order: stroke;
+            stroke: #ffffff;
+            stroke-width: 4px;
+            stroke-linejoin: round;
+        }
+
+        #treeSvg .node {
+            fill: #ffffff;
+            stroke: #64748b;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: stroke 0.15s, stroke-width 0.15s;
+        }
+
+        #treeSvg .node.root {
+            fill: #0f2b3d;
+            stroke: #0f2b3d;
+        }
+
+        #treeSvg .node-text {
+            font: 700 13px system-ui, sans-serif;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        #treeSvg .node-text.root {
+            fill: #ffffff;
+        }
+
+        #treeSvg .node-text.normal {
+            fill: #0f172a;
+        }
+
+        #treeSvg .chip {
+            stroke: #ffffff;
+            stroke-width: 1.5;
+        }
+
+        #treeSvg .chip-text {
+            font: 700 10px system-ui, sans-serif;
+            fill: #ffffff;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        #treeSvg .node-g:hover .node {
+            stroke: #2563eb;
+            stroke-width: 3.5;
+        }
+
+        #treeSvg .node-g.selected .node {
+            stroke: #2563eb;
+            stroke-width: 4;
+        }
+
+        .node-info {
+            margin-top: 0.9rem;
+            font-size: 0.82rem;
+            color: #334155;
+            line-height: 1.85;
+            background: #fff;
+            border: 1px solid #e2edf7;
+            border-radius: 1rem;
+            padding: 0.75rem 1rem;
+        }
+
+        .ni-k {
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .ni-w {
+            display: inline-block;
+            color: #fff;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.76rem;
+            font-weight: 600;
+            padding: 0.05rem 0.45rem;
+            border-radius: 0.8rem;
+            margin: 0 0.1rem;
+        }
+
+        .status {
+            font-size: 0.85rem;
+            margin-top: 0.8rem;
+            color: #4b6b8f;
+            min-height: 1.2rem;
+        }
+
+        .error {
+            color: #c2410c;
+            background: #fff1f0;
+            padding: 0.5rem 0.9rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            padding: 1rem 2rem 1.5rem;
+            color: #7e8b9e;
+            border-top: 1px solid #eef2f8;
+            font-family: monospace;
+        }
+
+        @media (max-width: 600px) {
+            .content {
+                padding: 1.5rem;
+            }
+
+            .header-top {
+                flex-direction: column-reverse;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="header">
+            <div class="header-top">
+                <div>
+                    <h1>树形图绘制</h1>
+                    <p>图论画图工具 · 支持两种树边输入 · 点权（最多 3 个，颜色区分）· 边权</p>
+                </div>
+                <a href="../index.html" class="back-link">← 返回主页</a>
+            </div>
+        </div>
+        <div class="content">
+            <!-- 输入设置 -->
+            <section class="converter">
+                <div class="section-title">⚙ 输入设置</div>
+                <div class="field-row">
+                    <div class="field">
+                        <label>树边输入方式</label>
+                        <div class="seg" id="modeSeg">
+                            <button class="active" data-mode="edge">边集 <code style="background:#fff">u v [w]</code></button>
+                            <button data-mode="father">父亲 <code style="background:#fff">i fa [w]</code></button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>根结点编号</label>
+                        <input type="number" id="rootInput" value="1" min="1" step="1">
+                    </div>
+                </div>
+            </section>
+
+            <!-- 树边 -->
+            <section class="converter">
+                <div class="section-title">🔗 树边</div>
+                <textarea id="edgeInput" spellcheck="false" placeholder="1 2&#10;1 3&#10;2 4 5"></textarea>
+                <div class="hint" id="edgeHint"></div>
+                <div class="example-buttons" id="exampleButtons"></div>
+            </section>
+
+            <!-- 点权 -->
+            <section class="converter">
+                <div class="section-title">🎯 点权配置（可选）</div>
+                <textarea id="weightInput" spellcheck="false" placeholder="节点 权1 [权2] [权3]&#10;1 10&#10;4 5 6"></textarea>
+                <div class="hint">每行格式：<code>节点 权1 [权2] [权3]</code>，最多 3 个；按位置赋予固定颜色
+                    <span class="swatch" style="background:#ef4444"></span>权1
+                    <span class="swatch" style="background:#2563eb"></span>权2
+                    <span class="swatch" style="background:#16a34a"></span>权3
+                </div>
+            </section>
+
+            <!-- 显示选项 -->
+            <section class="converter">
+                <div class="section-title">🎛 显示选项</div>
+                <div class="options">
+                    <label class="check"><input type="checkbox" id="optEdgeW" checked> 显示边权</label>
+                    <label class="check"><input type="checkbox" id="optNodeW" checked> 显示点权</label>
+                    <label class="check"><input type="checkbox" id="optRootHi" checked> 高亮根结点</label>
+                </div>
+            </section>
+
+            <!-- 可视化 -->
+            <section class="converter">
+                <div class="section-title">🧭 树形结构</div>
+                <div class="toolbar">
+                    <span id="statsLine"></span>
+                    <span class="spacer"></span>
+                    <button class="zoom-btn" id="zoomOut" title="缩小">−</button>
+                    <span id="zoomLabel" style="min-width:42px;text-align:center;font-family:monospace">100%</span>
+                    <button class="zoom-btn" id="zoomIn" title="放大">+</button>
+                    <button class="text-btn" id="zoomReset">复位</button>
+                    <button class="text-btn" id="exportBtn">⬇ 导出 SVG</button>
+                </div>
+                <div class="viz-wrap" id="vizWrap">
+                    <svg id="treeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+                </div>
+                <div class="node-info" id="nodeInfo">💡 点击节点查看详情（深度、父/子节点、边权、点权）</div>
+                <div class="status" id="buildStatus"></div>
+            </section>
+        </div>
+        <footer>
+            🌳 自适应树形布局 | 浏览器内计算 | 支持边集 / 父亲两种输入 · 点权最多 3 色 · 可导出 SVG
+        </footer>
+    </div>
+
+    <script>
+        (function () {
+            const $ = id => document.getElementById(id);
+            const edgeInput = $('edgeInput');
+            const weightInput = $('weightInput');
+            const rootInput = $('rootInput');
+            const modeSeg = $('modeSeg');
+            const edgeHint = $('edgeHint');
+            const buildStatus = $('buildStatus');
+            const statsLine = $('statsLine');
+            const svg = $('treeSvg');
+            const nodeInfo = $('nodeInfo');
+            const optEdgeW = $('optEdgeW');
+            const optNodeW = $('optNodeW');
+            const optRootHi = $('optRootHi');
+            const zoomLabel = $('zoomLabel');
+
+            // ===== 布局常量 =====
+            const R = 17;                 // 节点半径
+            const V_SPACING = 94;         // 层间距
+            const MARGIN_X = 42;
+            const MARGIN_TOP = 40;
+            const COMP_GAP = 46;          // 连通块间距
+            const CHIP_H = 16;
+            const CHIP_GAP = 5;
+            const CHIP_MIN_W = 22;
+            const CHAR_W = 7.9;
+            const SLOT_COLORS = ['#ef4444', '#2563eb', '#16a34a'];
+
+            // ===== 示例 =====
+            const EXAMPLES = [
+                {
+                    name: '二叉树 (边集)', mode: 'edge', root: 1,
+                    edges: '1 2\n1 3\n2 4\n2 5\n3 6\n3 7',
+                    weights: '1 100\n4 5 6\n7 1 2 3'
+                },
+                {
+                    name: '带权二叉 (边集+w)', mode: 'edge', root: 1,
+                    edges: '1 2 4\n1 3 7\n2 4 2\n2 5 9\n3 6 1\n3 7 3',
+                    weights: '1 10 20\n2 5\n6 8 9'
+                },
+                {
+                    name: '父亲模式 (i fa w)', mode: 'father', root: 1,
+                    edges: '1 5\n1 3\n2 2\n2 8\n3 7\n3 1',
+                    weights: '1 4\n3 1 2'
+                },
+                {
+                    name: '链 (父亲)', mode: 'father', root: 1,
+                    edges: '1\n2\n3\n4\n5',
+                    weights: '2 7\n6 3 1'
+                },
+                {
+                    name: '星形 (边集)', mode: 'edge', root: 1,
+                    edges: '1 2\n1 3\n1 4\n1 5',
+                    weights: '1 1 1\n2 2 2\n3 3 3'
+                }
+            ];
+
+            // ===== 状态 =====
+            let mode = 'edge';
+            let zoom = 1;
+            let selectedId = null;
+
+            // 构建结果
+            let nodeSet = new Set();
+            let adj = new Map();        // id -> Map(nbr -> w|undefined)
+            let nodeWeights = new Map();// id -> [v1,v2,v3]
+            let posX = new Map(), posY = new Map();
+            let parentOf = new Map(), childrenOf = new Map(), depthOf = new Map();
+            let compRoots = new Set();
+            let layoutSize = { W: 0, H: 0 };
+
+            function esc(s) {
+                return String(s).replace(/[&<>"]/g, c => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
+                }[c]));
+            }
+
+            function setStatus(el, text, isError) {
+                if (isError) el.innerHTML = `<span class="error">⚠️ ${text}</span>`;
+                else el.innerHTML = text;
+            }
+
+            function displayVal(v) {
+                v = String(v);
+                return v.length > 8 ? v.slice(0, 7) + '…' : v;
+            }
+
+            function chipWidth(v) {
+                const len = Math.min(String(v).length, 8);
+                return Math.max(CHIP_MIN_W, len * CHAR_W + 10);
+            }
+
+            function getChips(id) {
+                const vals = nodeWeights.get(id);
+                if (!vals || !vals.length) return [];
+                return vals.map((v, i) => ({ value: v, color: SLOT_COLORS[i], w: chipWidth(v) }));
+            }
+
+            function chipRowWidth(id) {
+                const chips = getChips(id);
+                if (!chips.length) return 0;
+                return chips.reduce((s, c) => s + c.w, 0) + (chips.length - 1) * CHIP_GAP;
+            }
+
+            function footprint(id) {
+                return Math.max(2 * R, chipRowWidth(id)) + 18;
+            }
+
+            // ===== 解析 =====
+            function parseEdges(text, mode) {
+                const edges = [];
+                let bad = 0;
+                let i = 2;
+                for (const raw of text.split('\n')) {
+                    const line = raw.trim();
+                    if (!line || line.startsWith('#')) continue;
+                    const t = line.split(/\s+/);
+                    if (mode === 'edge') {
+                        if (t.length < 2) { bad++; continue; }
+                        const u = parseInt(t[0], 10), v = parseInt(t[1], 10);
+                        if (!Number.isFinite(u) || !Number.isFinite(v)) { bad++; continue; }
+                        edges.push({ u, v, w: t.length >= 3 ? t[2] : null });
+                    } else {
+                        const fa = parseInt(t[0], 10);
+                        if (!Number.isFinite(fa)) { bad++; continue; }
+                        edges.push({ u: i, v: fa, w: t.length >= 2 ? t[1] : null });
+                        i++;
+                    }
+                }
+                return { edges, bad };
+            }
+
+            function parseWeights(text) {
+                const wm = new Map();
+                let bad = 0, extra = 0;
+                for (const raw of text.split('\n')) {
+                    const line = raw.trim();
+                    if (!line || line.startsWith('#')) continue;
+                    const t = line.split(/\s+/);
+                    const node = parseInt(t[0], 10);
+                    if (!Number.isFinite(node)) { bad++; continue; }
+                    const vals = t.slice(1);
+                    if (vals.length > 3) extra += vals.length - 3;
+                    wm.set(node, vals.slice(0, 3));
+                }
+                return { wm, bad, extra };
+            }
+
+            function findComponents(nodeSet, adj) {
+                const visited = new Set();
+                const comps = [];
+                for (const start of nodeSet) {
+                    if (visited.has(start)) continue;
+                    const comp = new Set();
+                    const q = [start];
+                    visited.add(start);
+                    while (q.length) {
+                        const u = q.shift();
+                        comp.add(u);
+                        for (const nb of adj.get(u).keys()) {
+                            if (!visited.has(nb)) { visited.add(nb); q.push(nb); }
+                        }
+                    }
+                    comps.push(comp);
+                }
+                return comps;
+            }
+
+            function buildTree(root, comp, adj) {
+                const parent = new Map();
+                const children = new Map();
+                const depth = new Map();
+                comp.forEach(n => children.set(n, []));
+                parent.set(root, null);
+                depth.set(root, 0);
+                const seen = new Set([root]);
+                const q = [root];
+                while (q.length) {
+                    const u = q.shift();
+                    for (const nb of adj.get(u).keys()) {
+                        if (comp.has(nb) && !seen.has(nb)) {
+                            seen.add(nb);
+                            parent.set(nb, u);
+                            depth.set(nb, depth.get(u) + 1);
+                            children.get(u).push(nb);
+                            q.push(nb);
+                        }
+                    }
+                }
+                return { parent, children, depth };
+            }
+
+            // ===== 构建 =====
+            function build() {
+                const root = parseInt(rootInput.value, 10);
+                const rootId = Number.isFinite(root) ? root : 1;
+                const { edges, bad: badE } = parseEdges(edgeInput.value, mode);
+                const { wm, bad: badW, extra } = parseWeights(weightInput.value);
+
+                nodeSet = new Set();
+                adj = new Map();
+                nodeWeights = wm;
+                const ensure = id => { if (!adj.has(id)) adj.set(id, new Map()); };
+                edges.forEach(e => {
+                    nodeSet.add(e.u); nodeSet.add(e.v);
+                    ensure(e.u); ensure(e.v);
+                    adj.get(e.u).set(e.v, e.w);
+                    adj.get(e.v).set(e.u, e.w);
+                });
+                wm.forEach((_, k) => { nodeSet.add(k); ensure(k); });
+
+                if (nodeSet.size === 0) {
+                    parentOf = new Map(); childrenOf = new Map(); depthOf = new Map();
+                    compRoots = new Set();
+                    svg.innerHTML = '';
+                    svg.removeAttribute('width'); svg.removeAttribute('height');
+                    setStatus(buildStatus, '请输入树边以生成树形图', true);
+                    statsLine.textContent = '';
+                    nodeInfo.innerHTML = '💡 点击节点查看详情';
+                    return;
+                }
+
+                const comps = findComponents(nodeSet, adj);
+                // 包含指定根的连通块排在最前，其余按最小编号
+                comps.sort((a, b) => {
+                    const ar = a.has(rootId) ? 0 : 1, br = b.has(rootId) ? 0 : 1;
+                    if (ar !== br) return ar - br;
+                    return Math.min(...a) - Math.min(...b);
+                });
+
+                parentOf = new Map(); childrenOf = new Map(); depthOf = new Map();
+                compRoots = new Set();
+                posX = new Map(); posY = new Map();
+
+                let yOff = 0;
+                comps.forEach(comp => {
+                    const compRoot = comp.has(rootId) ? rootId : Math.min(...comp);
+                    compRoots.add(compRoot);
+                    const { parent, children, depth } = buildTree(compRoot, comp, adj);
+
+                    // 自适应横向布局：叶子按 footprint 占位，内部节点居中
+                    let cursor = 0;
+                    const xmap = new Map();
+                    function assign(id) {
+                        const ch = [...children.get(id)].sort((a, b) => a - b);
+                        if (!ch.length) {
+                            const fp = footprint(id);
+                            xmap.set(id, cursor + fp / 2);
+                            cursor += fp;
+                            return;
+                        }
+                        ch.forEach(assign);
+                        xmap.set(id, (xmap.get(ch[0]) + xmap.get(ch[ch.length - 1])) / 2);
+                    }
+                    assign(compRoot);
+
+                    let compMaxDepth = 0;
+                    comp.forEach(id => {
+                        posX.set(id, xmap.get(id));
+                        posY.set(id, yOff + depth.get(id) * V_SPACING);
+                        parentOf.set(id, parent.get(id));
+                        childrenOf.set(id, children.get(id));
+                        depthOf.set(id, depth.get(id));
+                        if (depth.get(id) > compMaxDepth) compMaxDepth = depth.get(id);
+                    });
+                    yOff += (compMaxDepth + 1) * V_SPACING + COMP_GAP;
+                });
+
+                // 归一化坐标
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                nodeSet.forEach(id => {
+                    const halfW = Math.max(R, chipRowWidth(id) / 2);
+                    const px = posX.get(id), py = posY.get(id);
+                    minX = Math.min(minX, px - halfW); maxX = Math.max(maxX, px + halfW);
+                    minY = Math.min(minY, py - R);
+                    maxY = Math.max(maxY, py + R + (getChips(id).length ? 22 : 0));
+                });
+                const dx = MARGIN_X - minX, dy = MARGIN_TOP - minY;
+                nodeSet.forEach(id => {
+                    posX.set(id, posX.get(id) + dx);
+                    posY.set(id, posY.get(id) + dy);
+                });
+                layoutSize.W = (maxX - minX) + 2 * MARGIN_X;
+                layoutSize.H = (maxY - minY) + 2 * MARGIN_TOP;
+
+                selectedId = null;
+                render();
+
+                // 状态与统计
+                const stats = [];
+                stats.push(`节点 ${nodeSet.size}`);
+                stats.push(`边 ${edges.length}`);
+                stats.push(`根 ${rootId}`);
+                if (comps.length > 1) stats.push(`连通块 ${comps.length}`);
+                statsLine.textContent = stats.join(' · ');
+
+                const notes = [];
+                if (badE > 0) notes.push(`忽略 ${badE} 行无效树边`);
+                if (badW > 0) notes.push(`忽略 ${badW} 行无效点权`);
+                if (extra > 0) notes.push(`${extra} 个点权超过 3 个已截断`);
+                if (nodeSet.size > 1 && edges.length !== nodeSet.size - 1)
+                    notes.push(`边数 ${edges.length} ≠ n-1=${nodeSet.size - 1}（可能非树/含环/不连通）`);
+                if (comps.length > 1) notes.push(`图不连通，已分块绘制`);
+                if (!nodeSet.has(rootId)) notes.push(`根 ${rootId} 不在图中`);
+
+                let msg = `✔ 已绘制 · ${nodeSet.size} 节点 · ${edges.length} 边`;
+                if (notes.length) msg += ' · ' + notes.join('；');
+                setStatus(buildStatus, msg);
+                nodeInfo.innerHTML = '💡 点击节点查看详情（深度、父/子节点、边权、点权）';
+            }
+
+            // ===== 渲染 =====
+            function render() {
+                if (nodeSet.size === 0) { svg.innerHTML = ''; return; }
+                const showEdgeW = optEdgeW.checked;
+                const showNodeW = optNodeW.checked;
+                const highlightRoot = optRootHi.checked;
+                const z = zoom;
+
+                let out = `<g transform="scale(${z})">`;
+
+                // 边 + 边权
+                nodeSet.forEach(id => {
+                    const p = parentOf.get(id);
+                    if (p == null) return;
+                    const x1 = posX.get(p);
+                    const y1 = posY.get(p) + R + (getChips(p).length ? 20 : 0);
+                    const x2 = posX.get(id);
+                    const y2 = posY.get(id) - R;
+                    out += `<line class="tree-edge" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"></line>`;
+                    if (showEdgeW) {
+                        const w = adj.get(p).get(id);
+                        if (w != null) {
+                            const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+                            out += `<text class="edge-label" x="${mx.toFixed(1)}" y="${(my - 5).toFixed(1)}" text-anchor="middle">${esc(w)}</text>`;
+                        }
+                    }
+                });
+
+                // 节点
+                nodeSet.forEach(id => {
+                    const chips = getChips(id);
+                    const isRoot = highlightRoot && compRoots.has(id);
+                    const cx = posX.get(id), cy = posY.get(id);
+                    const sel = selectedId === id ? ' selected' : '';
+                    out += `<g class="node-g${sel}" data-id="${id}">`;
+                    out += `<title>${esc(nodeTitle(id))}</title>`;
+                    // 点权 chips（节点下方）
+                    if (showNodeW && chips.length) {
+                        const total = chips.reduce((s, c) => s + c.w, 0) + (chips.length - 1) * CHIP_GAP;
+                        let sx = cx - total / 2;
+                        const chy = cy + R + 11;
+                        chips.forEach(c => {
+                            out += `<rect class="chip" x="${sx.toFixed(1)}" y="${(chy - CHIP_H / 2).toFixed(1)}" width="${c.w.toFixed(1)}" height="${CHIP_H}" rx="${CHIP_H / 2}" fill="${c.color}"></rect>`;
+                            out += `<text class="chip-text" x="${(sx + c.w / 2).toFixed(1)}" y="${chy.toFixed(1)}" text-anchor="middle" dominant-baseline="central">${esc(displayVal(c.value))}</text>`;
+                            sx += c.w + CHIP_GAP;
+                        });
+                    }
+                    const cls = 'node' + (isRoot ? ' root' : '');
+                    out += `<circle class="${cls}" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${R}"></circle>`;
+                    out += `<text class="node-text ${isRoot ? 'root' : 'normal'}" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle" dominant-baseline="central">${esc(id)}</text>`;
+                    out += `</g>`;
+                });
+
+                out += `</g>`;
+                svg.setAttribute('width', (layoutSize.W * z).toFixed(0));
+                svg.setAttribute('height', (layoutSize.H * z).toFixed(0));
+                svg.innerHTML = out;
+            }
+
+            function nodeTitle(id) {
+                const depth = depthOf.get(id);
+                const parent = parentOf.get(id);
+                const isRoot = compRoots.has(id);
+                const ch = childrenOf.get(id) || [];
+                const ew = parent != null ? adj.get(parent).get(id) : null;
+                const chips = nodeWeights.get(id) || [];
+                const lines = [`节点 #${id}${isRoot ? ' (根)' : ''} · 深度 ${depth}`];
+                lines.push(`父节点: ${parent != null ? '#' + parent : '无'}`);
+                lines.push(`子节点: ${ch.length ? ch.join(', ') : '无'}`);
+                if (ew != null) lines.push(`到父边权: ${ew}`);
+                if (chips.length) lines.push(`点权: ${chips.join(', ')}`);
+                return lines.join('\n');
+            }
+
+            function selectNode(id) {
+                selectedId = id;
+                svg.querySelectorAll('.node-g.selected').forEach(g => g.classList.remove('selected'));
+                const g = svg.querySelector(`.node-g[data-id="${id}"]`);
+                if (g) g.classList.add('selected');
+
+                const depth = depthOf.get(id);
+                const parent = parentOf.get(id);
+                const isRoot = compRoots.has(id);
+                const ch = childrenOf.get(id) || [];
+                const ew = parent != null ? adj.get(parent).get(id) : null;
+                const chips = nodeWeights.get(id) || [];
+
+                const lines = [];
+                lines.push(`<span class="ni-k">节点</span> <b>${id}</b> · <span class="ni-k">深度</span> ${depth}${isRoot ? ' · <b style="color:#16a34a">根结点</b>' : ''}`);
+                lines.push(`<span class="ni-k">父节点</span> ${parent != null ? `<b>${parent}</b>${ew != null ? ` · 边权 <code>${esc(ew)}</code>` : ''}` : '无（根）'}`);
+                lines.push(`<span class="ni-k">子节点</span> ${ch.length ? ch.map(c => `<b>${c}</b>`).join(' ') : '无（叶子）'}`);
+                lines.push(`<span class="ni-k">点权</span> ${chips.length ? chips.map((v, i) => `<span class="ni-w" style="background:${SLOT_COLORS[i]}">${esc(v)}</span>`).join(' ') : '无'}`);
+                nodeInfo.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+            }
+
+            function updateHint() {
+                if (mode === 'edge') {
+                    edgeHint.innerHTML = '每行一条边：<code>u v</code> 或 <code>u v w</code>（w 为边权，可选）';
+                    edgeInput.placeholder = '1 2\n1 3\n2 4 5';
+                } else {
+                    edgeHint.innerHTML = '从节点 2 开始，每行输入其父节点：<code>fa</code> 或 <code>fa w</code>（第 k 行对应节点 k+1）';
+                    edgeInput.placeholder = '1\n1\n2\n2';
+                }
+            }
+
+            function setMode(m) {
+                mode = m;
+                modeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+                updateHint();
+                build();
+            }
+
+            function applyExample(ex) {
+                setMode(ex.mode);
+                rootInput.value = ex.root;
+                edgeInput.value = ex.edges;
+                weightInput.value = ex.weights;
+                build();
+            }
+
+            function setZoom(z) {
+                zoom = Math.max(0.3, Math.min(3, z));
+                zoomLabel.textContent = Math.round(zoom * 100) + '%';
+                render();
+            }
+
+            function exportSVG() {
+                if (nodeSet.size === 0) return;
+                const clone = svg.cloneNode(true);
+                clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                const data = new XMLSerializer().serializeToString(clone);
+                const blob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'tree.svg';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
+
+            // ===== 事件绑定 =====
+            modeSeg.addEventListener('click', e => {
+                const btn = e.target.closest('button[data-mode]');
+                if (btn) setMode(btn.dataset.mode);
+            });
+
+            rootInput.addEventListener('input', build);
+            edgeInput.addEventListener('input', build);
+            weightInput.addEventListener('input', build);
+            [optEdgeW, optNodeW, optRootHi].forEach(cb => cb.addEventListener('change', render));
+
+            svg.addEventListener('click', e => {
+                const g = e.target.closest('.node-g');
+                if (!g) return;
+                selectNode(g.dataset.id);
+            });
+
+            $('zoomIn').addEventListener('click', () => setZoom(zoom * 1.15));
+            $('zoomOut').addEventListener('click', () => setZoom(zoom / 1.15));
+            $('zoomReset').addEventListener('click', () => setZoom(1));
+            $('exportBtn').addEventListener('click', exportSVG);
+
+            // 示例按钮
+            const exBtns = $('exampleButtons');
+            EXAMPLES.forEach((ex, i) => {
+                const b = document.createElement('button');
+                b.className = 'example-btn';
+                b.textContent = ex.name;
+                b.addEventListener('click', () => applyExample(ex));
+                exBtns.appendChild(b);
+            });
+
+            // 初始化
+            updateHint();
+            edgeInput.value = EXAMPLES[0].edges;
+            weightInput.value = EXAMPLES[0].weights;
+            rootInput.value = EXAMPLES[0].root;
+            build();
+        })();
+    </script>
+</body>
+
+</html>
