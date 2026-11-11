@@ -511,8 +511,21 @@
         drawW: imgW * scale,
         drawH: imgH * scale,
         canvasW: Math.max(1, Math.round(boxW * scale)),
-        canvasH: Math.max(1, Math.round(boxH * scale))
+        canvasH: Math.max(1, Math.round(boxH * scale)),
+        scale: scale
       };
+    }
+
+    /** 铺不透明底，避免透明像素在变换/量化时变成噪点 */
+    function flattenOpaque(src, fillStyle) {
+      const c = document.createElement('canvas');
+      c.width = src.width;
+      c.height = src.height;
+      const x = c.getContext('2d');
+      x.fillStyle = fillStyle || '#ffffff';
+      x.fillRect(0, 0, c.width, c.height);
+      x.drawImage(src, 0, 0);
+      return c;
     }
 
     function renderRotatedFrom(source, maxSide) {
@@ -521,6 +534,10 @@
       off.width = size.canvasW;
       off.height = size.canvasH;
       const octx = off.getContext('2d');
+      // 先铺白底，旋转后四角不会留下透明噪点
+      octx.fillStyle = '#ffffff';
+      octx.fillRect(0, 0, off.width, off.height);
+      octx.imageSmoothingEnabled = size.scale < 0.999;
       octx.save();
       octx.translate(size.canvasW / 2, size.canvasH / 2);
       octx.rotate(state.rotation * Math.PI / 180);
@@ -538,6 +555,8 @@
       out.width = w;
       out.height = h;
       const octx = out.getContext('2d');
+      // 像素级镜像时关闭平滑，减少边缘脏点
+      octx.imageSmoothingEnabled = false;
       octx.drawImage(srcCanvas, 0, 0);
 
       if (foldH === 'ltr') {
@@ -727,22 +746,26 @@
       const gif = GIFEncoder();
       for (let i = 0; i < frames.length; i++) {
         const frame = frames[i];
-        // 导出时再按 MAX_EXPORT 限制一次尺寸
-        let out = frame.canvas;
+        // 导出前压成不透明，避免半透明/透明像素被量化成椒盐噪点
+        let out = flattenOpaque(frame.canvas, '#ffffff');
         const maxSide = Math.max(out.width, out.height);
         if (maxSide > MAX_EXPORT) {
           const scale = MAX_EXPORT / maxSide;
           const scaled = document.createElement('canvas');
           scaled.width = Math.max(1, Math.round(out.width * scale));
           scaled.height = Math.max(1, Math.round(out.height * scale));
-          scaled.getContext('2d').drawImage(out, 0, 0, scaled.width, scaled.height);
+          const sctx = scaled.getContext('2d');
+          sctx.fillStyle = '#ffffff';
+          sctx.fillRect(0, 0, scaled.width, scaled.height);
+          sctx.drawImage(out, 0, 0, scaled.width, scaled.height);
           out = scaled;
         }
 
-        const fctx = out.getContext('2d');
+        const fctx = out.getContext('2d', { willReadFrequently: true });
         const imageData = fctx.getImageData(0, 0, out.width, out.height);
-        const palette = quantize(imageData.data, 256);
-        const index = applyPalette(imageData.data, palette);
+        // rgb565 量化更稳；强制不透明数据可减少错误色点
+        const palette = quantize(imageData.data, 256, { format: 'rgb565' });
+        const index = applyPalette(imageData.data, palette, 'rgb565');
         const delayCs = Math.max(2, Math.round((frame.delay || 100) / 10));
         gif.writeFrame(index, out.width, out.height, {
           palette,
@@ -758,8 +781,21 @@
       return gif.bytes();
     }
 
+    function getGifBackgroundCss(gif) {
+      try {
+        if (gif.gct && gif.lsd && gif.lsd.backgroundColorIndex != null) {
+          const c = gif.gct[gif.lsd.backgroundColorIndex];
+          if (c && c.length >= 3) {
+            return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+          }
+        }
+      } catch (_) { /* ignore */ }
+      return '#ffffff';
+    }
+
     /**
-     * 将 GIF 解码为完整合成帧（处理 disposal）
+     * 将 GIF 解码为完整合成帧（正确处理透明像素 + disposal）
+     * 注意：不能对含透明色的 patch 直接 putImageData，否则会挖空下层画面。
      */
     function decodeGifToFrames(arrayBuffer) {
       const gif = parseGIF(arrayBuffer);
@@ -768,11 +804,18 @@
 
       const width = gif.lsd.width;
       const height = gif.lsd.height;
+      const bgCss = getGifBackgroundCss(gif);
+
       const compose = document.createElement('canvas');
       compose.width = width;
       compose.height = height;
       const cctx = compose.getContext('2d', { willReadFrequently: true });
-      cctx.clearRect(0, 0, width, height);
+      cctx.fillStyle = bgCss;
+      cctx.fillRect(0, 0, width, height);
+
+      // 复用临时画布绘制帧补丁，用 drawImage 做 alpha 合成
+      const temp = document.createElement('canvas');
+      const tctx = temp.getContext('2d', { willReadFrequently: true });
 
       /** @type {{ canvas: HTMLCanvasElement, delay: number }[]} */
       const full = [];
@@ -782,25 +825,35 @@
         const { left, top, width: fw, height: fh } = frame.dims;
         const disposal = frame.disposalType;
 
+        // disposal=3：绘制前保存当前画面，帧结束后恢复
         if (disposal === 3) {
           previous = cctx.getImageData(0, 0, width, height);
         }
 
-        const patch = cctx.createImageData(fw, fh);
-        patch.data.set(frame.patch);
-        cctx.putImageData(patch, left, top);
+        if (fw > 0 && fh > 0 && frame.patch) {
+          if (temp.width !== fw || temp.height !== fh) {
+            temp.width = fw;
+            temp.height = fh;
+          } else {
+            tctx.clearRect(0, 0, fw, fh);
+          }
+          const patch = tctx.createImageData(fw, fh);
+          patch.data.set(frame.patch);
+          tctx.putImageData(patch, 0, 0);
+          // drawImage 会按 alpha 混合：透明像素保留下层，不挖空
+          cctx.drawImage(temp, left, top);
+        }
 
-        const snap = document.createElement('canvas');
-        snap.width = width;
-        snap.height = height;
-        snap.getContext('2d').drawImage(compose, 0, 0);
+        // 导出完整不透明帧，后续变换/编码不再受透明通道干扰
         full.push({
-          canvas: snap,
+          canvas: flattenOpaque(compose, bgCss),
           delay: Math.max(20, frame.delay || 100)
         });
 
         if (disposal === 2) {
-          cctx.clearRect(left, top, fw, fh);
+          // 恢复为背景色（不是透明）
+          cctx.fillStyle = bgCss;
+          cctx.fillRect(left, top, fw, fh);
         } else if (disposal === 3 && previous) {
           cctx.putImageData(previous, 0, 0);
           previous = null;
