@@ -281,16 +281,21 @@
       <div class="header-top">
         <div>
           <h1>图片/GIF 拖拽处理</h1>
-          <p>旋转 · 四向对称翻折 · 万花筒 · 动态 GIF 预览 / 导出</p>
+          <p>旋转 · 四向翻折 · 万花筒 · 剪贴板粘贴/复制 · 动态 GIF</p>
         </div>
         <a class="back-link" href="../index.html">← 返回首页</a>
       </div>
     </div>
 
     <div class="content">
-      <div id="statusBar" class="status-bar">等待拖入图片…</div>
+      <div id="statusBar" class="status-bar">等待拖入 / 粘贴 / 选择图片…</div>
 
       <div class="toolbar" role="toolbar" aria-label="图片处理工具">
+        <button type="button" class="btn" id="btnPaste" title="从剪贴板粘贴图片">粘贴</button>
+        <button type="button" class="btn" id="btnCopy" disabled title="复制处理结果到剪贴板">复制</button>
+        <button type="button" class="btn" id="btnPick" title="从相册或文件选择图片">选择图片</button>
+        <input type="file" id="fileInput" accept="image/*,.gif,.png,.jpg,.jpeg,.webp" hidden>
+
         <button type="button" class="btn" id="btnRotate" disabled title="累计旋转 90°">旋转 90°</button>
         <button type="button" class="btn" id="btnFoldLtr" disabled title="把左侧半边镜像复制到右侧">左→右</button>
         <button type="button" class="btn" id="btnFoldRtl" disabled title="把右侧半边镜像复制到左侧">右→左</button>
@@ -308,16 +313,16 @@
         <button type="button" class="btn primary" id="btnDownload" disabled>下载</button>
       </div>
 
-      <div id="dropZone" class="drop-zone" tabindex="0" aria-label="图片拖拽投放区域">
+      <div id="dropZone" class="drop-zone" tabindex="0" aria-label="图片投放区域，可点击选择文件">
         <div class="drop-hint">
-          <div class="hint-title">把图片或 GIF 拖到这里</div>
-          <div class="hint-sub">支持 PNG / JPEG / GIF / WebP<br>GIF 会保持动画，导出/拖出也为 GIF</div>
+          <div class="hint-title">拖入 / 点击选择 / 粘贴图片</div>
+          <div class="hint-sub">支持 PNG / JPEG / GIF / WebP<br>手机可用「粘贴」「复制」「选择图片」</div>
         </div>
         <canvas id="workCanvas" draggable="true" width="1" height="1"></canvas>
       </div>
 
       <p class="tips">
-        提示：「左→右」等为对称翻折（保留一侧并镜像复制到另一侧）。GIF 会逐帧处理并实时播放；静态图导出 PNG，GIF 导出 GIF。
+        提示：剪贴板复制多为 PNG（兼容性最好）；GIF 动画请用「下载 GIF」。可用 Ctrl+V / ⌘V 粘贴。
       </p>
     </div>
 
@@ -333,6 +338,10 @@
     const ctx = canvas.getContext('2d', { alpha: true });
     const statusBar = document.getElementById('statusBar');
 
+    const btnPaste = document.getElementById('btnPaste');
+    const btnCopy = document.getElementById('btnCopy');
+    const btnPick = document.getElementById('btnPick');
+    const fileInput = document.getElementById('fileInput');
     const btnRotate = document.getElementById('btnRotate');
     const btnFoldLtr = document.getElementById('btnFoldLtr');
     const btnFoldRtl = document.getElementById('btnFoldRtl');
@@ -392,8 +401,11 @@
     function setControlsEnabled(enabled) {
       [
         btnRotate, btnFoldLtr, btnFoldRtl, btnFoldTtb, btnFoldBtt,
-        btnKaleido, btnReset, btnDownload
+        btnKaleido, btnReset, btnDownload, btnCopy
       ].forEach((btn) => { btn.disabled = !enabled; });
+      // 粘贴 / 选择图片始终可用，方便手机导入
+      btnPaste.disabled = false;
+      btnPick.disabled = false;
       updateToolbarUI();
     }
 
@@ -902,6 +914,166 @@
       await prepareExport();
       return exportReady && !!exportBlob;
     }
+
+    function mimeToExt(mime) {
+      if (mime === 'image/gif') return 'gif';
+      if (mime === 'image/jpeg') return 'jpg';
+      if (mime === 'image/webp') return 'webp';
+      return 'png';
+    }
+
+    function blobToFile(blob, nameHint) {
+      const type = blob.type || 'image/png';
+      const name = nameHint || ('clipboard.' + mimeToExt(type));
+      return new File([blob], name, { type });
+    }
+
+    /**
+     * 从剪贴板读取图片（按钮 / 系统粘贴共用）
+     */
+    async function pasteFromClipboard() {
+      // 优先 Clipboard API（需用户手势 + 权限）
+      if (navigator.clipboard && typeof navigator.clipboard.read === 'function') {
+        try {
+          const items = await navigator.clipboard.read();
+          for (const item of items) {
+            const imageType = item.types.find((t) => t.indexOf('image/') === 0);
+            if (!imageType) continue;
+            const blob = await item.getType(imageType);
+            await loadImageFile(blobToFile(blob, 'clipboard.' + mimeToExt(imageType)));
+            return true;
+          }
+          setStatus('剪贴板里没有图片，请先复制一张图', 'warn');
+          return false;
+        } catch (err) {
+          console.warn(err);
+          // 继续尝试提示用户用系统粘贴
+        }
+      }
+      setStatus('无法直接读取剪贴板，请按 Ctrl+V / ⌘V，或用「选择图片」', 'warn');
+      return false;
+    }
+
+    /**
+     * 处理 ClipboardEvent（Ctrl+V / 手机粘贴）
+     */
+    function handlePasteEvent(e) {
+      const cd = e.clipboardData;
+      if (!cd) return false;
+
+      // 文件形式（部分浏览器）
+      if (cd.files && cd.files.length) {
+        const file = cd.files[0];
+        if (isImageFile(file)) {
+          e.preventDefault();
+          loadImageFile(file);
+          return true;
+        }
+      }
+
+      const items = cd.items;
+      if (!items) return false;
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (it.kind === 'file' && it.type && it.type.indexOf('image/') === 0) {
+          e.preventDefault();
+          const blob = it.getAsFile();
+          if (blob) {
+            loadImageFile(blobToFile(blob, 'paste.' + mimeToExt(blob.type || 'image/png')));
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    /**
+     * 复制当前画面到剪贴板（PNG，兼容手机/桌面）
+     * 说明：系统剪贴板普遍不支持动图 GIF，故统一写 PNG；完整动图请用下载。
+     */
+    async function copyResultToClipboard() {
+      if (!hasContent() || !playFrames.length) {
+        setStatus('请先导入图片', 'warn');
+        return;
+      }
+
+      // 取当前正在显示的帧；静态图即唯一帧
+      const idx = Math.min(playIndex, playFrames.length - 1);
+      const frameCanvas = playFrames[idx].canvas;
+
+      let blob;
+      try {
+        blob = await canvasToBlob(frameCanvas, 'image/png');
+      } catch (err) {
+        setStatus('生成图片失败，请重试', 'error');
+        return;
+      }
+
+      if (!navigator.clipboard || typeof ClipboardItem === 'undefined') {
+        setStatus('当前浏览器不支持复制图片，请改用下载', 'error');
+        return;
+      }
+
+      try {
+        // Safari 等环境要求 ClipboardItem 值为 Promise
+        const item = new ClipboardItem({
+          'image/png': Promise.resolve(blob)
+        });
+        await navigator.clipboard.write([item]);
+        setStatus(
+          isGif
+            ? '已复制当前帧到剪贴板（PNG；完整动图请用下载 GIF）'
+            : '已复制到剪贴板',
+          'ok'
+        );
+      } catch (err) {
+        console.warn(err);
+        // 部分浏览器不接受 Promise 值，再试同步 Blob
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          setStatus(
+            isGif
+              ? '已复制当前帧到剪贴板（PNG；完整动图请用下载 GIF）'
+              : '已复制到剪贴板',
+            'ok'
+          );
+        } catch (err2) {
+          console.warn(err2);
+          setStatus('复制失败：请检查剪贴板权限，或改用下载', 'error');
+        }
+      }
+    }
+
+    // ========== 粘贴 / 选择 / 复制 ==========
+    btnPaste.addEventListener('click', () => {
+      pasteFromClipboard();
+    });
+
+    btnCopy.addEventListener('click', () => {
+      copyResultToClipboard();
+    });
+
+    btnPick.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      fileInput.value = '';
+      if (file) loadImageFile(file);
+    });
+
+    // 空投放区点击 → 选择文件（方便手机）
+    dropZone.addEventListener('click', (e) => {
+      if (e.target === canvas) return;
+      if (!hasContent()) fileInput.click();
+    });
+
+    document.addEventListener('paste', (e) => {
+      handlePasteEvent(e);
+    });
 
     // ========== 拖入 ==========
     ['dragenter', 'dragover'].forEach((type) => {
