@@ -766,10 +766,13 @@
         // rgb565 量化更稳；强制不透明数据可减少错误色点
         const palette = quantize(imageData.data, 256, { format: 'rgb565' });
         const index = applyPalette(imageData.data, palette, 'rgb565');
-        const delayCs = Math.max(2, Math.round((frame.delay || 100) / 10));
+        // gifenc 的 delay 单位是毫秒（内部会 /10 写成 GIF 的 1/100 秒）
+        // 之前误再 /10，导致文件里间隔过短；浏览器常把 ≤10ms 的帧强制成 ~100ms，看起来变慢
+        // 下限 20ms，避免写成 0/1 百分秒触发浏览器夹紧
+        const delayMs = Math.max(20, frame.delay || 100);
         gif.writeFrame(index, out.width, out.height, {
           palette,
-          delay: delayCs,
+          delay: delayMs,
           repeat: i === 0 ? 0 : undefined
         });
 
