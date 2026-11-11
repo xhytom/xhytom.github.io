@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <meta name="description" content="图片/GIF 拖拽处理工具：旋转、四向对称翻折、万花筒，纯前端 Canvas 实现">
+  <meta name="description" content="图片/GIF 拖拽处理工具：旋转、四向对称翻折、万花筒，支持动态 GIF 预览与导出">
   <title>图片/GIF 拖拽处理工具 | 旋转 · 对称翻折 · 万花筒</title>
   <style>
     * {
@@ -89,7 +89,6 @@
       padding: 1.5rem 2rem 2rem;
     }
 
-    /* 状态提示条 */
     .status-bar {
       min-height: 1.5rem;
       margin-bottom: 1rem;
@@ -98,19 +97,10 @@
       font-family: monospace;
     }
 
-    .status-bar.warn {
-      color: #b45309;
-    }
+    .status-bar.warn { color: #b45309; }
+    .status-bar.error { color: #b91c1c; }
+    .status-bar.ok { color: #047857; }
 
-    .status-bar.error {
-      color: #b91c1c;
-    }
-
-    .status-bar.ok {
-      color: #047857;
-    }
-
-    /* 工具栏 */
     .toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -167,9 +157,7 @@
       box-shadow: 0 0 0 3px rgba(16, 24, 47, 0.18);
     }
 
-    .btn.ghost {
-      background: transparent;
-    }
+    .btn.ghost { background: transparent; }
 
     .slider-group {
       display: inline-flex;
@@ -195,7 +183,6 @@
       cursor: pointer;
     }
 
-    /* 投放区域 */
     .drop-zone {
       position: relative;
       width: 100%;
@@ -245,9 +232,7 @@
       line-height: 1.6;
     }
 
-    .drop-zone.has-image .drop-hint {
-      display: none;
-    }
+    .drop-zone.has-image .drop-hint { display: none; }
 
     #workCanvas {
       max-width: 100%;
@@ -258,13 +243,8 @@
       background: transparent;
     }
 
-    .drop-zone.has-image #workCanvas {
-      display: block;
-    }
-
-    #workCanvas:active {
-      cursor: grabbing;
-    }
+    .drop-zone.has-image #workCanvas { display: block; }
+    #workCanvas:active { cursor: grabbing; }
 
     .tips {
       margin-top: 1rem;
@@ -283,39 +263,14 @@
     }
 
     @media (max-width: 640px) {
-      body {
-        padding: 0.75rem;
-      }
-
-      .content {
-        padding: 1.2rem 1.2rem 1.5rem;
-      }
-
-      .header {
-        padding: 1.4rem 1.2rem;
-      }
-
-      .header h1 {
-        font-size: 1.45rem;
-      }
-
-      .drop-zone {
-        min-height: 300px;
-      }
-
-      .btn {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.8rem;
-      }
-
-      .slider-group {
-        width: 100%;
-        justify-content: space-between;
-      }
-
-      .slider-group input[type="range"] {
-        flex: 1;
-      }
+      body { padding: 0.75rem; }
+      .content { padding: 1.2rem 1.2rem 1.5rem; }
+      .header { padding: 1.4rem 1.2rem; }
+      .header h1 { font-size: 1.45rem; }
+      .drop-zone { min-height: 300px; }
+      .btn { padding: 0.5rem 0.75rem; font-size: 0.8rem; }
+      .slider-group { width: 100%; justify-content: space-between; }
+      .slider-group input[type="range"] { flex: 1; }
     }
   </style>
 </head>
@@ -326,7 +281,7 @@
       <div class="header-top">
         <div>
           <h1>图片/GIF 拖拽处理</h1>
-          <p>旋转 · 四向对称翻折 · 万花筒 · 拖出 / 下载 PNG</p>
+          <p>旋转 · 四向对称翻折 · 万花筒 · 动态 GIF 预览 / 导出</p>
         </div>
         <a class="back-link" href="../index.html">← 返回首页</a>
       </div>
@@ -350,565 +305,761 @@
         </label>
 
         <button type="button" class="btn ghost" id="btnReset" disabled>重置</button>
-        <button type="button" class="btn primary" id="btnDownload" disabled>下载 PNG</button>
+        <button type="button" class="btn primary" id="btnDownload" disabled>下载</button>
       </div>
 
-      <div
-        id="dropZone"
-        class="drop-zone"
-        tabindex="0"
-        aria-label="图片拖拽投放区域"
-      >
+      <div id="dropZone" class="drop-zone" tabindex="0" aria-label="图片拖拽投放区域">
         <div class="drop-hint">
           <div class="hint-title">把图片或 GIF 拖到这里</div>
-          <div class="hint-sub">支持 PNG / JPEG / GIF / WebP<br>处理后可从画布拖出，或点「下载 PNG」</div>
+          <div class="hint-sub">支持 PNG / JPEG / GIF / WebP<br>GIF 会保持动画，导出/拖出也为 GIF</div>
         </div>
-        <!-- 可拖出结果的主画布 -->
         <canvas id="workCanvas" draggable="true" width="1" height="1"></canvas>
       </div>
 
       <p class="tips">
-        提示：「左→右」等为对称翻折（保留一侧并镜像复制到另一侧），同轴两个方向互斥、可开关；水平与垂直可叠加。GIF 仅处理当前帧，导出为 PNG。
+        提示：「左→右」等为对称翻折（保留一侧并镜像复制到另一侧）。GIF 会逐帧处理并实时播放；静态图导出 PNG，GIF 导出 GIF。
       </p>
     </div>
 
     <footer>&copy; 2026 xhytom · 纯前端 Canvas 工具</footer>
   </div>
 
-  <script>
-    (function () {
-      'use strict';
+  <script type="module">
+    import { parseGIF, decompressFrames } from 'https://esm.sh/gifuct-js@2.1.2';
+    import { GIFEncoder, quantize, applyPalette } from 'https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js';
 
-      // ========== DOM ==========
-      const dropZone = document.getElementById('dropZone');
-      const canvas = document.getElementById('workCanvas');
-      const ctx = canvas.getContext('2d', { willReadFrequently: false });
-      const statusBar = document.getElementById('statusBar');
+    const dropZone = document.getElementById('dropZone');
+    const canvas = document.getElementById('workCanvas');
+    const ctx = canvas.getContext('2d', { alpha: true });
+    const statusBar = document.getElementById('statusBar');
 
-      const btnRotate = document.getElementById('btnRotate');
-      const btnFoldLtr = document.getElementById('btnFoldLtr');
-      const btnFoldRtl = document.getElementById('btnFoldRtl');
-      const btnFoldTtb = document.getElementById('btnFoldTtb');
-      const btnFoldBtt = document.getElementById('btnFoldBtt');
-      const btnKaleido = document.getElementById('btnKaleido');
-      const btnReset = document.getElementById('btnReset');
-      const btnDownload = document.getElementById('btnDownload');
-      const powerSlider = document.getElementById('powerSlider');
-      const powerValue = document.getElementById('powerValue');
-      const powerGroup = document.getElementById('powerGroup');
+    const btnRotate = document.getElementById('btnRotate');
+    const btnFoldLtr = document.getElementById('btnFoldLtr');
+    const btnFoldRtl = document.getElementById('btnFoldRtl');
+    const btnFoldTtb = document.getElementById('btnFoldTtb');
+    const btnFoldBtt = document.getElementById('btnFoldBtt');
+    const btnKaleido = document.getElementById('btnKaleido');
+    const btnReset = document.getElementById('btnReset');
+    const btnDownload = document.getElementById('btnDownload');
+    const powerSlider = document.getElementById('powerSlider');
+    const powerValue = document.getElementById('powerValue');
+    const powerGroup = document.getElementById('powerGroup');
 
-      const FOLD_LABELS = {
-        ltr: '左→右',
-        rtl: '右→左',
-        ttb: '上→下',
-        btt: '下→上'
+    const FOLD_LABELS = { ltr: '左→右', rtl: '右→左', ttb: '上→下', btt: '下→上' };
+    const MAX_DISPLAY = 720;
+    const MAX_EXPORT = 720;
+
+    /** @type {{ canvas: HTMLCanvasElement, delay: number }[]} */
+    let sourceFrames = [];
+    /** @type {{ canvas: HTMLCanvasElement, delay: number }[]} */
+    let playFrames = [];
+    let sourceFileName = 'image';
+    let isGif = false;
+    let hasSource = false;
+
+    const state = {
+      rotation: 0,
+      foldH: null,
+      foldV: null,
+      kaleidoscopeEnabled: false,
+      kaleidoscopePower: 6
+    };
+
+    let animTimer = 0;
+    let playIndex = 0;
+    let rebuildToken = 0;
+    let encodeTimer = 0;
+    let exportBlob = null;
+    let exportObjectURL = '';
+    let exportDataURL = '';
+    let exportMime = 'image/png';
+    let exportReady = false;
+    let exporting = false;
+
+    function setStatus(msg, type) {
+      statusBar.textContent = msg;
+      statusBar.className = 'status-bar' + (type ? ' ' + type : '');
+    }
+
+    function hasContent() {
+      return hasSource && sourceFrames.length > 0;
+    }
+
+    function updateDownloadLabel() {
+      btnDownload.textContent = isGif ? '下载 GIF' : '下载 PNG';
+    }
+
+    function setControlsEnabled(enabled) {
+      [
+        btnRotate, btnFoldLtr, btnFoldRtl, btnFoldTtb, btnFoldBtt,
+        btnKaleido, btnReset, btnDownload
+      ].forEach((btn) => { btn.disabled = !enabled; });
+      updateToolbarUI();
+    }
+
+    function updateToolbarUI() {
+      const on = hasContent() && state.kaleidoscopeEnabled;
+      powerSlider.disabled = !on;
+      powerGroup.classList.toggle('disabled', !on);
+      btnKaleido.classList.toggle('active', state.kaleidoscopeEnabled);
+      btnFoldLtr.classList.toggle('active', state.foldH === 'ltr');
+      btnFoldRtl.classList.toggle('active', state.foldH === 'rtl');
+      btnFoldTtb.classList.toggle('active', state.foldV === 'ttb');
+      btnFoldBtt.classList.toggle('active', state.foldV === 'btt');
+      powerValue.textContent = String(state.kaleidoscopePower);
+      powerSlider.value = String(state.kaleidoscopePower);
+      updateDownloadLabel();
+    }
+
+    function toggleFoldH(dir) {
+      state.foldH = state.foldH === dir ? null : dir;
+    }
+
+    function toggleFoldV(dir) {
+      state.foldV = state.foldV === dir ? null : dir;
+    }
+
+    function describeFolds() {
+      const parts = [];
+      if (state.foldH) parts.push(FOLD_LABELS[state.foldH]);
+      if (state.foldV) parts.push(FOLD_LABELS[state.foldV]);
+      return parts.length ? ('对称翻折：' + parts.join(' + ')) : '已关闭对称翻折';
+    }
+
+    function isImageFile(file) {
+      if (!file) return false;
+      if (file.type && file.type.indexOf('image/') === 0) return true;
+      return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name || '');
+    }
+
+    function clearExportCache() {
+      exportReady = false;
+      exportBlob = null;
+      exportDataURL = '';
+      if (exportObjectURL) {
+        URL.revokeObjectURL(exportObjectURL);
+        exportObjectURL = '';
+      }
+    }
+
+    function stopAnimation() {
+      if (animTimer) {
+        clearTimeout(animTimer);
+        animTimer = 0;
+      }
+    }
+
+    function paintFrame(frameCanvas) {
+      if (!frameCanvas) return;
+      if (canvas.width !== frameCanvas.width || canvas.height !== frameCanvas.height) {
+        canvas.width = frameCanvas.width;
+        canvas.height = frameCanvas.height;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(frameCanvas, 0, 0);
+    }
+
+    function startAnimation() {
+      stopAnimation();
+      if (!playFrames.length) return;
+
+      playIndex = 0;
+      paintFrame(playFrames[0].canvas);
+
+      if (playFrames.length === 1) return;
+
+      const tick = () => {
+        const frame = playFrames[playIndex];
+        paintFrame(frame.canvas);
+        const delay = Math.max(20, frame.delay || 100);
+        playIndex = (playIndex + 1) % playFrames.length;
+        animTimer = window.setTimeout(tick, delay);
       };
+      tick();
+    }
 
-      // ========== 状态 ==========
-      /** @type {HTMLImageElement|null} */
-      let sourceImage = null;
-      let sourceFileName = 'image';
-      let isGif = false;
-
-      // 变换状态（可叠加）
-      const state = {
-        rotation: 0,              // 累计角度（度）
-        // 对称翻折：把一侧半边镜像复制到另一侧（同轴互斥）
-        foldH: null,              // null | 'ltr' | 'rtl'
-        foldV: null,              // null | 'ttb' | 'btt'
-        kaleidoscopeEnabled: false,
-        kaleidoscopePower: 6      // 分片数 1–12
+    function computeDrawSize(imgW, imgH, rotationDeg, maxSide) {
+      const rad = (rotationDeg % 180) * Math.PI / 180;
+      const absCos = Math.abs(Math.cos(rad));
+      const absSin = Math.abs(Math.sin(rad));
+      let boxW;
+      let boxH;
+      if (rotationDeg % 180 === 0) {
+        boxW = imgW;
+        boxH = imgH;
+      } else if (Math.abs(rotationDeg % 180) === 90) {
+        boxW = imgH;
+        boxH = imgW;
+      } else {
+        boxW = imgW * absCos + imgH * absSin;
+        boxH = imgW * absSin + imgH * absCos;
+      }
+      const scale = Math.min(1, maxSide / Math.max(boxW, boxH));
+      return {
+        drawW: imgW * scale,
+        drawH: imgH * scale,
+        canvasW: Math.max(1, Math.round(boxW * scale)),
+        canvasH: Math.max(1, Math.round(boxH * scale))
       };
+    }
 
-      // 拖出用：每次重绘后缓存 Data URL
-      let exportDataURL = '';
-      // 显示区域最大边长，避免超大 Canvas 卡顿
-      const MAX_DISPLAY = 900;
+    function renderRotatedFrom(source, maxSide) {
+      const size = computeDrawSize(source.width, source.height, state.rotation, maxSide);
+      const off = document.createElement('canvas');
+      off.width = size.canvasW;
+      off.height = size.canvasH;
+      const octx = off.getContext('2d');
+      octx.save();
+      octx.translate(size.canvasW / 2, size.canvasH / 2);
+      octx.rotate(state.rotation * Math.PI / 180);
+      octx.drawImage(source, -size.drawW / 2, -size.drawH / 2, size.drawW, size.drawH);
+      octx.restore();
+      return off;
+    }
 
-      // ========== 工具函数 ==========
-      function setStatus(msg, type) {
-        statusBar.textContent = msg;
-        statusBar.className = 'status-bar' + (type ? ' ' + type : '');
-      }
+    function applySymmetryFold(srcCanvas, foldH, foldV) {
+      if (!foldH && !foldV) return srcCanvas;
 
-      function setControlsEnabled(enabled) {
-        [
-          btnRotate, btnFoldLtr, btnFoldRtl, btnFoldTtb, btnFoldBtt,
-          btnKaleido, btnReset, btnDownload
-        ].forEach(function (btn) {
-          btn.disabled = !enabled;
-        });
-        updateToolbarUI();
-      }
+      const w = srcCanvas.width;
+      const h = srcCanvas.height;
+      const out = document.createElement('canvas');
+      out.width = w;
+      out.height = h;
+      const octx = out.getContext('2d');
+      octx.drawImage(srcCanvas, 0, 0);
 
-      function updateToolbarUI() {
-        const on = !!sourceImage && state.kaleidoscopeEnabled;
-        powerSlider.disabled = !on;
-        powerGroup.classList.toggle('disabled', !on);
-        btnKaleido.classList.toggle('active', state.kaleidoscopeEnabled);
-        btnFoldLtr.classList.toggle('active', state.foldH === 'ltr');
-        btnFoldRtl.classList.toggle('active', state.foldH === 'rtl');
-        btnFoldTtb.classList.toggle('active', state.foldV === 'ttb');
-        btnFoldBtt.classList.toggle('active', state.foldV === 'btt');
-        powerValue.textContent = String(state.kaleidoscopePower);
-        powerSlider.value = String(state.kaleidoscopePower);
-      }
-
-      /** 切换水平对称翻折：再次点击同一方向则关闭 */
-      function toggleFoldH(dir) {
-        state.foldH = state.foldH === dir ? null : dir;
-      }
-
-      /** 切换垂直对称翻折：再次点击同一方向则关闭 */
-      function toggleFoldV(dir) {
-        state.foldV = state.foldV === dir ? null : dir;
-      }
-
-      function describeFolds() {
-        var parts = [];
-        if (state.foldH) parts.push(FOLD_LABELS[state.foldH]);
-        if (state.foldV) parts.push(FOLD_LABELS[state.foldV]);
-        return parts.length ? ('对称翻折：' + parts.join(' + ')) : '已关闭对称翻折';
-      }
-
-      function isImageFile(file) {
-        if (!file) return false;
-        if (file.type && file.type.indexOf('image/') === 0) return true;
-        // 部分环境 MIME 为空，兜底按扩展名判断
-        return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name || '');
-      }
-
-      /**
-       * 计算在旋转后包围盒尺寸，并等比缩放到不超过 maxSide
-       */
-      function computeDrawSize(imgW, imgH, rotationDeg, maxSide) {
-        var rad = (rotationDeg % 180) * Math.PI / 180;
-        // 旋转后包围盒（镜像不改变包围盒尺寸）
-        var absCos = Math.abs(Math.cos(rad));
-        var absSin = Math.abs(Math.sin(rad));
-        var boxW, boxH;
-        if (rotationDeg % 180 === 0) {
-          boxW = imgW;
-          boxH = imgH;
-        } else if (Math.abs(rotationDeg % 180) === 90) {
-          boxW = imgH;
-          boxH = imgW;
-        } else {
-          boxW = imgW * absCos + imgH * absSin;
-          boxH = imgW * absSin + imgH * absCos;
-        }
-
-        var scale = Math.min(1, maxSide / Math.max(boxW, boxH));
-        return {
-          drawW: imgW * scale,
-          drawH: imgH * scale,
-          canvasW: Math.max(1, Math.round(boxW * scale)),
-          canvasH: Math.max(1, Math.round(boxH * scale)),
-          scale: scale
-        };
-      }
-
-      /**
-       * 将源图按旋转画到离屏 Canvas（不含对称翻折 / 万花筒）
-       */
-      function renderRotated() {
-        var size = computeDrawSize(
-          sourceImage.naturalWidth,
-          sourceImage.naturalHeight,
-          state.rotation,
-          MAX_DISPLAY
-        );
-
-        var off = document.createElement('canvas');
-        off.width = size.canvasW;
-        off.height = size.canvasH;
-        var octx = off.getContext('2d');
-
-        // 以画布中心为变换中心，避免旋转后偏移
+      if (foldH === 'ltr') {
+        const halfW = Math.floor(w / 2);
         octx.save();
-        octx.translate(size.canvasW / 2, size.canvasH / 2);
-        octx.rotate(state.rotation * Math.PI / 180);
-        octx.drawImage(
-          sourceImage,
-          -size.drawW / 2,
-          -size.drawH / 2,
-          size.drawW,
-          size.drawH
-        );
+        octx.translate(w, 0);
+        octx.scale(-1, 1);
+        octx.drawImage(srcCanvas, 0, 0, halfW, h, 0, 0, halfW, h);
         octx.restore();
-
-        return off;
+      } else if (foldH === 'rtl') {
+        const halfW = Math.ceil(w / 2);
+        const srcX = w - halfW;
+        octx.save();
+        octx.translate(halfW, 0);
+        octx.scale(-1, 1);
+        octx.drawImage(srcCanvas, srcX, 0, halfW, h, 0, 0, halfW, h);
+        octx.restore();
       }
 
-      /**
-       * 对称翻折：保留指定半边，镜像复制到另一半
-       * foldH: 'ltr' 左→右 / 'rtl' 右→左
-       * foldV: 'ttb' 上→下 / 'btt' 下→上
-       * 水平与垂直可叠加（先水平再垂直）
-       */
-      function applySymmetryFold(srcCanvas, foldH, foldV) {
-        if (!foldH && !foldV) return srcCanvas;
+      if (foldV) {
+        const mid = document.createElement('canvas');
+        mid.width = w;
+        mid.height = h;
+        mid.getContext('2d').drawImage(out, 0, 0);
 
-        var w = srcCanvas.width;
-        var h = srcCanvas.height;
-        var out = document.createElement('canvas');
-        out.width = w;
-        out.height = h;
-        var octx = out.getContext('2d');
-
-        // 先铺满原图，再覆盖镜像半边
-        octx.drawImage(srcCanvas, 0, 0);
-
-        if (foldH === 'ltr') {
-          // 左侧半边 → 镜像到右侧
-          var halfW = Math.floor(w / 2);
+        if (foldV === 'ttb') {
+          const halfH = Math.floor(h / 2);
           octx.save();
-          octx.translate(w, 0);
+          octx.translate(0, h);
+          octx.scale(1, -1);
+          octx.drawImage(mid, 0, 0, w, halfH, 0, 0, w, halfH);
+          octx.restore();
+        } else if (foldV === 'btt') {
+          const halfH = Math.ceil(h / 2);
+          const srcY = h - halfH;
+          octx.save();
+          octx.translate(0, halfH);
+          octx.scale(1, -1);
+          octx.drawImage(mid, 0, srcY, w, halfH, 0, 0, w, halfH);
+          octx.restore();
+        }
+      }
+
+      return out;
+    }
+
+    function applyKaleidoscope(srcCanvas, power) {
+      const segments = Math.max(1, Math.min(12, power | 0));
+      const size = Math.min(srcCanvas.width, srcCanvas.height);
+      const square = document.createElement('canvas');
+      square.width = size;
+      square.height = size;
+      const sctx = square.getContext('2d');
+      const sx = (srcCanvas.width - size) / 2;
+      const sy = (srcCanvas.height - size) / 2;
+      sctx.drawImage(srcCanvas, sx, sy, size, size, 0, 0, size, size);
+
+      const out = document.createElement('canvas');
+      out.width = size;
+      out.height = size;
+      const octx = out.getContext('2d');
+      const cx = size / 2;
+      const cy = size / 2;
+      const slice = (Math.PI * 2) / segments;
+
+      for (let i = 0; i < segments; i++) {
+        octx.save();
+        octx.translate(cx, cy);
+        octx.rotate(i * slice);
+        if (i % 2 === 1) {
           octx.scale(-1, 1);
-          octx.drawImage(srcCanvas, 0, 0, halfW, h, 0, 0, halfW, h);
-          octx.restore();
-        } else if (foldH === 'rtl') {
-          // 右侧半边 → 镜像到左侧
-          var halfW2 = Math.ceil(w / 2);
-          var srcX = w - halfW2;
-          octx.save();
-          octx.translate(halfW2, 0);
-          octx.scale(-1, 1);
-          octx.drawImage(srcCanvas, srcX, 0, halfW2, h, 0, 0, halfW2, h);
-          octx.restore();
+          octx.rotate(slice);
         }
-
-        // 垂直翻折基于「当前已含水平翻折」的结果再处理
-        if (foldV) {
-          var mid = document.createElement('canvas');
-          mid.width = w;
-          mid.height = h;
-          mid.getContext('2d').drawImage(out, 0, 0);
-
-          if (foldV === 'ttb') {
-            // 上侧半边 → 镜像到下侧
-            var halfH = Math.floor(h / 2);
-            octx.save();
-            octx.translate(0, h);
-            octx.scale(1, -1);
-            octx.drawImage(mid, 0, 0, w, halfH, 0, 0, w, halfH);
-            octx.restore();
-          } else if (foldV === 'btt') {
-            // 下侧半边 → 镜像到上侧
-            var halfH2 = Math.ceil(h / 2);
-            var srcY = h - halfH2;
-            octx.save();
-            octx.translate(0, halfH2);
-            octx.scale(1, -1);
-            octx.drawImage(mid, 0, srcY, w, halfH2, 0, 0, w, halfH2);
-            octx.restore();
-          }
-        }
-
-        return out;
+        octx.beginPath();
+        octx.moveTo(0, 0);
+        octx.arc(0, 0, cx + 1, -slice / 2, slice / 2);
+        octx.closePath();
+        octx.clip();
+        octx.drawImage(square, -cx, -cy);
+        octx.restore();
       }
+      return out;
+    }
 
-      /**
-       * 原生 Canvas 万花筒：以中心为轴，按分片数做扇区裁剪 + 交替镜像
-       * power 控制扇区数量，数值越大分片越密
-       */
-      function applyKaleidoscope(srcCanvas, power) {
-        var segments = Math.max(1, Math.min(12, power | 0));
-        var size = Math.min(srcCanvas.width, srcCanvas.height);
-        // 居中裁成正方形作为万花筒源
-        var square = document.createElement('canvas');
-        square.width = size;
-        square.height = size;
-        var sctx = square.getContext('2d');
-        var sx = (srcCanvas.width - size) / 2;
-        var sy = (srcCanvas.height - size) / 2;
-        sctx.drawImage(srcCanvas, sx, sy, size, size, 0, 0, size, size);
-
-        var out = document.createElement('canvas');
-        out.width = size;
-        out.height = size;
-        var octx = out.getContext('2d');
-
-        var cx = size / 2;
-        var cy = size / 2;
-        // 每个扇区的角度；交替镜像形成经典万花筒对称
-        var slice = (Math.PI * 2) / segments;
-
-        for (var i = 0; i < segments; i++) {
-          octx.save();
-          octx.translate(cx, cy);
-          octx.rotate(i * slice);
-
-          // 奇数扇区做镜像，产生对称花纹
-          if (i % 2 === 1) {
-            octx.scale(-1, 1);
-            octx.rotate(slice);
-          }
-
-          // 裁剪为三角形/扇形楔片
-          octx.beginPath();
-          octx.moveTo(0, 0);
-          octx.arc(0, 0, cx + 1, -slice / 2, slice / 2);
-          octx.closePath();
-          octx.clip();
-
-          octx.drawImage(square, -cx, -cy);
-          octx.restore();
-        }
-
-        return out;
+    function transformOneFrame(sourceCanvas, maxSide) {
+      let result = renderRotatedFrom(sourceCanvas, maxSide);
+      result = applySymmetryFold(result, state.foldH, state.foldV);
+      if (state.kaleidoscopeEnabled) {
+        result = applyKaleidoscope(result, state.kaleidoscopePower);
       }
+      return result;
+    }
 
-      /**
-       * 统一重绘：根据状态叠加变换并刷新画布 / 拖出缓存
-       */
-      function redraw() {
-        if (!sourceImage) return;
+    async function rebuildPlayFrames() {
+      if (!hasContent()) return;
+      const token = ++rebuildToken;
+      stopAnimation();
+      clearExportCache();
 
-        // 管线：旋转 → 四向对称翻折 → 万花筒
-        var rotated = renderRotated();
-        var folded = applySymmetryFold(rotated, state.foldH, state.foldV);
-        var result = state.kaleidoscopeEnabled
-          ? applyKaleidoscope(folded, state.kaleidoscopePower)
-          : folded;
-
-        canvas.width = result.width;
-        canvas.height = result.height;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(result, 0, 0);
-
-        // 缓存导出 Data URL，供拖出使用（同步准备，避免 dragstart 异步问题）
-        try {
-          exportDataURL = canvas.toDataURL('image/png');
-        } catch (e) {
-          exportDataURL = '';
-        }
-
-        updateToolbarUI();
-      }
-
-      /**
-       * 加载拖入的图片文件
-       */
-      function loadImageFile(file) {
-        if (!isImageFile(file)) {
-          setStatus('请拖入图片文件（PNG / JPEG / GIF / WebP）', 'error');
-          return;
-        }
-
-        isGif = (file.type === 'image/gif') || /\.gif$/i.test(file.name || '');
-        sourceFileName = (file.name || 'image').replace(/\.[^.]+$/, '') || 'image';
-
-        var reader = new FileReader();
-        reader.onerror = function () {
-          setStatus('读取文件失败，请重试', 'error');
-        };
-        reader.onload = function (ev) {
-          var img = new Image();
-          img.onload = function () {
-            sourceImage = img;
-            // 重置变换
-            state.rotation = 0;
-            state.foldH = null;
-            state.foldV = null;
-            state.kaleidoscopeEnabled = false;
-            state.kaleidoscopePower = 6;
-
-            dropZone.classList.add('has-image');
-            setControlsEnabled(true);
-            redraw();
-
-            if (isGif) {
-              setStatus('已加载 GIF（仅处理当前帧，导出为 PNG）· ' + file.name, 'warn');
-            } else {
-              setStatus('已加载 · ' + file.name + ' · ' + img.naturalWidth + '×' + img.naturalHeight, 'ok');
-            }
-          };
-          img.onerror = function () {
-            setStatus('图片解码失败，请换一张试试', 'error');
-          };
-          img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-      }
-
-      // ========== 拖入事件 ==========
-      ;['dragenter', 'dragover'].forEach(function (type) {
-        dropZone.addEventListener(type, function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          dropZone.classList.add('dragover');
-          if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      const next = [];
+      for (let i = 0; i < sourceFrames.length; i++) {
+        if (token !== rebuildToken) return;
+        const src = sourceFrames[i];
+        next.push({
+          canvas: transformOneFrame(src.canvas, MAX_DISPLAY),
+          delay: src.delay
         });
-      });
-
-      dropZone.addEventListener('dragleave', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        // 仅当真正离开投放区时取消高亮
-        if (!dropZone.contains(e.relatedTarget)) {
-          dropZone.classList.remove('dragover');
+        // 长 GIF 时让出主线程，避免卡死 UI
+        if (i % 3 === 2) {
+          await new Promise((r) => setTimeout(r, 0));
         }
-      });
+      }
+      if (token !== rebuildToken) return;
 
-      dropZone.addEventListener('drop', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.classList.remove('dragover');
+      playFrames = next;
+      startAnimation();
+      updateToolbarUI();
+      scheduleExportEncode();
+    }
 
-        var files = e.dataTransfer && e.dataTransfer.files;
-        if (!files || !files.length) {
-          setStatus('未检测到文件', 'error');
-          return;
-        }
-        loadImageFile(files[0]);
-      });
+    function scheduleExportEncode() {
+      clearTimeout(encodeTimer);
+      encodeTimer = window.setTimeout(() => {
+        prepareExport().catch((err) => {
+          console.warn(err);
+        });
+      }, isGif ? 350 : 80);
+    }
 
-      // 阻止页面级别默认拖放打开文件
-      window.addEventListener('dragover', function (e) { e.preventDefault(); });
-      window.addEventListener('drop', function (e) { e.preventDefault(); });
+    async function prepareExport() {
+      if (!hasContent() || !playFrames.length) return;
+      exporting = true;
+      exportReady = false;
 
-      // ========== 画布拖出保存 ==========
-      canvas.addEventListener('dragstart', function (e) {
-        if (!sourceImage || !exportDataURL) {
-          e.preventDefault();
-          return;
-        }
-        try {
-          var dt = e.dataTransfer;
-          dt.effectAllowed = 'copy';
-          // 常见浏览器可用的拖出 MIME
-          dt.setData('text/uri-list', exportDataURL);
-          dt.setData('text/plain', exportDataURL);
-          // 部分 Chromium 环境可识别 DownloadURL（格式：mime:filename:url）
-          try {
-            dt.setData(
-              'DownloadURL',
-              'image/png:' + sourceFileName + '-edited.png:' + exportDataURL
-            );
-          } catch (_) { /* 忽略不支持的类型 */ }
-
-          // 设置拖拽预览图
-          if (dt.setDragImage) {
-            dt.setDragImage(canvas, canvas.width / 2, canvas.height / 2);
-          }
-        } catch (err) {
-          // 拖出失败不抛错，用户可用下载按钮兜底
-          console.warn('拖出设置失败，请使用下载按钮', err);
-        }
-      });
-
-      // ========== 工具栏操作 ==========
-      btnRotate.addEventListener('click', function () {
-        if (!sourceImage) return;
-        state.rotation = (state.rotation + 90) % 360;
-        redraw();
-        setStatus('已旋转至 ' + state.rotation + '°', 'ok');
-      });
-
-      btnFoldLtr.addEventListener('click', function () {
-        if (!sourceImage) return;
-        toggleFoldH('ltr');
-        redraw();
-        setStatus(describeFolds(), 'ok');
-      });
-
-      btnFoldRtl.addEventListener('click', function () {
-        if (!sourceImage) return;
-        toggleFoldH('rtl');
-        redraw();
-        setStatus(describeFolds(), 'ok');
-      });
-
-      btnFoldTtb.addEventListener('click', function () {
-        if (!sourceImage) return;
-        toggleFoldV('ttb');
-        redraw();
-        setStatus(describeFolds(), 'ok');
-      });
-
-      btnFoldBtt.addEventListener('click', function () {
-        if (!sourceImage) return;
-        toggleFoldV('btt');
-        redraw();
-        setStatus(describeFolds(), 'ok');
-      });
-
-      btnKaleido.addEventListener('click', function () {
-        if (!sourceImage) return;
-        state.kaleidoscopeEnabled = !state.kaleidoscopeEnabled;
-        redraw();
-        setStatus(
-          state.kaleidoscopeEnabled
-            ? '万花筒已开启 · 强度 ' + state.kaleidoscopePower
-            : '万花筒已关闭',
-          'ok'
-        );
-      });
-
-      powerSlider.addEventListener('input', function () {
-        state.kaleidoscopePower = parseInt(powerSlider.value, 10) || 6;
-        powerValue.textContent = String(state.kaleidoscopePower);
-        if (sourceImage && state.kaleidoscopeEnabled) {
-          redraw();
+      try {
+        if (isGif && playFrames.length > 1) {
+          setStatus('正在生成可导出的 GIF…', 'warn');
+          const bytes = await encodeGifFromFrames(playFrames);
+          if (!hasContent()) return;
+          exportBlob = new Blob([bytes], { type: 'image/gif' });
+          exportMime = 'image/gif';
+          if (exportObjectURL) URL.revokeObjectURL(exportObjectURL);
+          exportObjectURL = URL.createObjectURL(exportBlob);
+          exportDataURL = await blobToDataURL(exportBlob);
+          exportReady = true;
+          setStatus(
+            'GIF 已就绪 · ' + playFrames.length + ' 帧 · 可拖出或下载',
+            'ok'
+          );
         } else {
-          updateToolbarUI();
+          const frame = playFrames[0].canvas;
+          exportBlob = await canvasToBlob(frame, 'image/png');
+          exportMime = 'image/png';
+          if (exportObjectURL) URL.revokeObjectURL(exportObjectURL);
+          exportObjectURL = URL.createObjectURL(exportBlob);
+          exportDataURL = frame.toDataURL('image/png');
+          exportReady = true;
         }
-      });
+      } catch (err) {
+        console.warn(err);
+        exportReady = false;
+        setStatus('导出准备失败，请重试下载', 'error');
+      } finally {
+        exporting = false;
+      }
+    }
 
-      btnReset.addEventListener('click', function () {
-        if (!sourceImage) return;
+    function canvasToBlob(c, type) {
+      return new Promise((resolve, reject) => {
+        c.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('toBlob failed'));
+        }, type);
+      });
+    }
+
+    function blobToDataURL(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('read failed'));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function encodeGifFromFrames(frames) {
+      const gif = GIFEncoder();
+      for (let i = 0; i < frames.length; i++) {
+        const frame = frames[i];
+        // 导出时再按 MAX_EXPORT 限制一次尺寸
+        let out = frame.canvas;
+        const maxSide = Math.max(out.width, out.height);
+        if (maxSide > MAX_EXPORT) {
+          const scale = MAX_EXPORT / maxSide;
+          const scaled = document.createElement('canvas');
+          scaled.width = Math.max(1, Math.round(out.width * scale));
+          scaled.height = Math.max(1, Math.round(out.height * scale));
+          scaled.getContext('2d').drawImage(out, 0, 0, scaled.width, scaled.height);
+          out = scaled;
+        }
+
+        const fctx = out.getContext('2d');
+        const imageData = fctx.getImageData(0, 0, out.width, out.height);
+        const palette = quantize(imageData.data, 256);
+        const index = applyPalette(imageData.data, palette);
+        const delayCs = Math.max(2, Math.round((frame.delay || 100) / 10));
+        gif.writeFrame(index, out.width, out.height, {
+          palette,
+          delay: delayCs,
+          repeat: i === 0 ? 0 : undefined
+        });
+
+        if (i % 2 === 1) {
+          await new Promise((r) => setTimeout(r, 0));
+        }
+      }
+      gif.finish();
+      return gif.bytes();
+    }
+
+    /**
+     * 将 GIF 解码为完整合成帧（处理 disposal）
+     */
+    function decodeGifToFrames(arrayBuffer) {
+      const gif = parseGIF(arrayBuffer);
+      const frames = decompressFrames(gif, true);
+      if (!frames.length) throw new Error('empty gif');
+
+      const width = gif.lsd.width;
+      const height = gif.lsd.height;
+      const compose = document.createElement('canvas');
+      compose.width = width;
+      compose.height = height;
+      const cctx = compose.getContext('2d', { willReadFrequently: true });
+      cctx.clearRect(0, 0, width, height);
+
+      /** @type {{ canvas: HTMLCanvasElement, delay: number }[]} */
+      const full = [];
+      let previous = null;
+
+      for (const frame of frames) {
+        const { left, top, width: fw, height: fh } = frame.dims;
+        const disposal = frame.disposalType;
+
+        if (disposal === 3) {
+          previous = cctx.getImageData(0, 0, width, height);
+        }
+
+        const patch = cctx.createImageData(fw, fh);
+        patch.data.set(frame.patch);
+        cctx.putImageData(patch, left, top);
+
+        const snap = document.createElement('canvas');
+        snap.width = width;
+        snap.height = height;
+        snap.getContext('2d').drawImage(compose, 0, 0);
+        full.push({
+          canvas: snap,
+          delay: Math.max(20, frame.delay || 100)
+        });
+
+        if (disposal === 2) {
+          cctx.clearRect(left, top, fw, fh);
+        } else if (disposal === 3 && previous) {
+          cctx.putImageData(previous, 0, 0);
+          previous = null;
+        }
+      }
+
+      return full;
+    }
+
+    function imageToFrameCanvas(img) {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth || img.width;
+      c.height = img.naturalHeight || img.height;
+      c.getContext('2d').drawImage(img, 0, 0);
+      return c;
+    }
+
+    async function loadImageFile(file) {
+      if (!isImageFile(file)) {
+        setStatus('请拖入图片文件（PNG / JPEG / GIF / WebP）', 'error');
+        return;
+      }
+
+      stopAnimation();
+      clearExportCache();
+      rebuildToken += 1;
+
+      isGif = (file.type === 'image/gif') || /\.gif$/i.test(file.name || '');
+      sourceFileName = (file.name || 'image').replace(/\.[^.]+$/, '') || 'image';
+      setStatus(isGif ? '正在解析 GIF 帧…' : '正在加载图片…', 'warn');
+
+      try {
+        if (isGif) {
+          const buffer = await file.arrayBuffer();
+          sourceFrames = decodeGifToFrames(buffer);
+        } else {
+          const dataURL = await readFileAsDataURL(file);
+          const img = await loadHTMLImage(dataURL);
+          sourceFrames = [{ canvas: imageToFrameCanvas(img), delay: 0 }];
+        }
+
+        hasSource = true;
         state.rotation = 0;
         state.foldH = null;
         state.foldV = null;
         state.kaleidoscopeEnabled = false;
         state.kaleidoscopePower = 6;
-        redraw();
-        setStatus('已重置为初始状态', 'ok');
-      });
 
-      /**
-       * 下载当前画布为 PNG（拖出失败时的兜底）
-       */
-      btnDownload.addEventListener('click', function () {
-        if (!sourceImage) return;
-        try {
-          canvas.toBlob(function (blob) {
-            if (!blob) {
-              // 兜底：使用 Data URL
-              var a = document.createElement('a');
-              a.href = exportDataURL || canvas.toDataURL('image/png');
-              a.download = sourceFileName + '-edited.png';
-              a.click();
-              setStatus('已触发下载 PNG', 'ok');
-              return;
-            }
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = sourceFileName + '-edited.png';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
-            setStatus('已下载 PNG', 'ok');
-          }, 'image/png');
-        } catch (err) {
-          setStatus('导出失败，请重试', 'error');
+        dropZone.classList.add('has-image');
+        setControlsEnabled(true);
+        await rebuildPlayFrames();
+
+        if (isGif) {
+          setStatus(
+            '已加载 GIF · ' + sourceFrames.length + ' 帧 · 动画预览中，导出为 GIF',
+            'ok'
+          );
+        } else {
+          const f = sourceFrames[0].canvas;
+          setStatus(
+            '已加载 · ' + file.name + ' · ' + f.width + '×' + f.height,
+            'ok'
+          );
         }
-      });
+      } catch (err) {
+        console.warn(err);
+        hasSource = false;
+        sourceFrames = [];
+        playFrames = [];
+        setControlsEnabled(false);
+        dropZone.classList.remove('has-image');
+        setStatus(isGif ? 'GIF 解析失败，请换一个文件试试' : '图片加载失败，请重试', 'error');
+      }
+    }
 
-      // 窗口尺寸变化时按需重绘（保持适配）
-      var resizeTimer = null;
-      window.addEventListener('resize', function () {
-        if (!sourceImage) return;
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(redraw, 150);
+    function readFileAsDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('read failed'));
+        reader.readAsDataURL(file);
       });
+    }
 
-      // 初始：控件禁用
-      setControlsEnabled(false);
-    })();
+    function loadHTMLImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('image decode failed'));
+        img.src = src;
+      });
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+
+    async function ensureExportReady() {
+      if (exportReady && exportBlob) return true;
+      if (exporting) {
+        setStatus('正在生成文件，请稍候…', 'warn');
+        return false;
+      }
+      await prepareExport();
+      return exportReady && !!exportBlob;
+    }
+
+    // ========== 拖入 ==========
+    ['dragenter', 'dragover'].forEach((type) => {
+      dropZone.addEventListener(type, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('dragover');
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      });
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!dropZone.contains(e.relatedTarget)) {
+        dropZone.classList.remove('dragover');
+      }
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.remove('dragover');
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) {
+        setStatus('未检测到文件', 'error');
+        return;
+      }
+      loadImageFile(files[0]);
+    });
+
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => e.preventDefault());
+
+    // ========== 拖出 ==========
+    canvas.addEventListener('dragstart', (e) => {
+      if (!hasContent()) {
+        e.preventDefault();
+        return;
+      }
+      if (!exportReady || !exportDataURL) {
+        e.preventDefault();
+        setStatus(
+          exporting
+            ? '正在生成文件，稍后再拖，或点下载按钮'
+            : '导出文件尚未就绪，请稍候或点下载',
+          'warn'
+        );
+        scheduleExportEncode();
+        return;
+      }
+
+      try {
+        const dt = e.dataTransfer;
+        dt.effectAllowed = 'copy';
+        dt.setData('text/uri-list', exportDataURL);
+        dt.setData('text/plain', exportDataURL);
+        const ext = exportMime === 'image/gif' ? 'gif' : 'png';
+        try {
+          dt.setData(
+            'DownloadURL',
+            exportMime + ':' + sourceFileName + '-edited.' + ext + ':' + exportDataURL
+          );
+        } catch (_) { /* ignore */ }
+        if (dt.setDragImage) {
+          dt.setDragImage(canvas, Math.floor(canvas.width / 2), Math.floor(canvas.height / 2));
+        }
+      } catch (err) {
+        console.warn('拖出设置失败，请使用下载按钮', err);
+      }
+    });
+
+    // ========== 工具栏 ==========
+    function afterTransform(msg) {
+      rebuildPlayFrames().then(() => {
+        if (msg) setStatus(msg, 'ok');
+      });
+    }
+
+    btnRotate.addEventListener('click', () => {
+      if (!hasContent()) return;
+      state.rotation = (state.rotation + 90) % 360;
+      afterTransform('已旋转至 ' + state.rotation + '°');
+    });
+
+    btnFoldLtr.addEventListener('click', () => {
+      if (!hasContent()) return;
+      toggleFoldH('ltr');
+      afterTransform(describeFolds());
+    });
+
+    btnFoldRtl.addEventListener('click', () => {
+      if (!hasContent()) return;
+      toggleFoldH('rtl');
+      afterTransform(describeFolds());
+    });
+
+    btnFoldTtb.addEventListener('click', () => {
+      if (!hasContent()) return;
+      toggleFoldV('ttb');
+      afterTransform(describeFolds());
+    });
+
+    btnFoldBtt.addEventListener('click', () => {
+      if (!hasContent()) return;
+      toggleFoldV('btt');
+      afterTransform(describeFolds());
+    });
+
+    btnKaleido.addEventListener('click', () => {
+      if (!hasContent()) return;
+      state.kaleidoscopeEnabled = !state.kaleidoscopeEnabled;
+      afterTransform(
+        state.kaleidoscopeEnabled
+          ? '万花筒已开启 · 强度 ' + state.kaleidoscopePower
+          : '万花筒已关闭'
+      );
+    });
+
+    powerSlider.addEventListener('input', () => {
+      state.kaleidoscopePower = parseInt(powerSlider.value, 10) || 6;
+      powerValue.textContent = String(state.kaleidoscopePower);
+      if (hasContent() && state.kaleidoscopeEnabled) {
+        afterTransform('万花筒强度 ' + state.kaleidoscopePower);
+      } else {
+        updateToolbarUI();
+      }
+    });
+
+    btnReset.addEventListener('click', () => {
+      if (!hasContent()) return;
+      state.rotation = 0;
+      state.foldH = null;
+      state.foldV = null;
+      state.kaleidoscopeEnabled = false;
+      state.kaleidoscopePower = 6;
+      afterTransform('已重置为初始状态');
+    });
+
+    btnDownload.addEventListener('click', async () => {
+      if (!hasContent()) return;
+      const ok = await ensureExportReady();
+      if (!ok || !exportBlob) return;
+      const ext = exportMime === 'image/gif' ? 'gif' : 'png';
+      triggerDownload(exportBlob, sourceFileName + '-edited.' + ext);
+      setStatus('已下载 ' + ext.toUpperCase(), 'ok');
+    });
+
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      if (!hasContent()) return;
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        rebuildPlayFrames();
+      }, 180);
+    });
+
+    setControlsEnabled(false);
   </script>
 </body>
 
